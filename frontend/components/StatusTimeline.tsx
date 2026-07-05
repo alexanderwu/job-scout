@@ -9,9 +9,9 @@ const STEPS: { key: keyof SavedJob; label: string }[] = [
 ];
 
 export function StatusTimeline({ saved }: { saved: SavedJob }) {
-  const steps = STEPS.filter((step) => saved[step.key]).sort(
-    (a, b) => new Date(saved[a.key] as string).getTime() - new Date(saved[b.key] as string).getTime(),
-  );
+  const steps = STEPS.filter((step) => saved[step.key])
+    .map((step) => ({ ...step, date: new Date(saved[step.key] as string) }))
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
 
   if (steps.length === 0) return null;
 
@@ -20,7 +20,7 @@ export function StatusTimeline({ saved }: { saved: SavedJob }) {
       {steps.map((step, index) => (
         <li key={step.key}>
           {index > 0 && "→ "}
-          {step.label} {new Date(saved[step.key] as string).toLocaleDateString()}
+          {step.label} {step.date.toLocaleDateString()}
         </li>
       ))}
     </ol>

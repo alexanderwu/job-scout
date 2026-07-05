@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { generateCoverLetter, type CoverLetter } from "@/lib/api";
+import { ApiError, generateCoverLetter, type CoverLetter } from "@/lib/api";
 
 export function CoverLetterPanel({
   jobId,
@@ -19,8 +19,14 @@ export function CoverLetterPanel({
     setError(null);
     try {
       setCoverLetter(await generateCoverLetter(jobId));
-    } catch {
-      setError("Generation failed — check that Ollama is running.");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        setError("Upload a resume first — cover letters are tailored to your profile.");
+      } else if (err instanceof ApiError && err.status === 502) {
+        setError("Generation failed — is Ollama running?");
+      } else {
+        setError("Generation failed — try again.");
+      }
     } finally {
       setPending(false);
     }

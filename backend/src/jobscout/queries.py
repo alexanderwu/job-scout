@@ -131,7 +131,7 @@ async def upsert_saved_job_status(
         saved.status = status
         saved.updated_at = now
     timestamp_column = STATUS_TIMESTAMP_COLUMNS.get(status)
-    if timestamp_column is not None:
+    if timestamp_column is not None and getattr(saved, timestamp_column) is None:
         setattr(saved, timestamp_column, now)
     await session.flush()
     return saved

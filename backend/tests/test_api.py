@@ -39,6 +39,14 @@ class FakeLLMProvider(LLMProvider):
         return f"Cover letter for prompt of length {len(prompt)}."
 
 
+class FailingLLMProvider(LLMProvider):
+    """Simulates Ollama being unreachable, for testing the route's
+    error-handling path rather than the happy path."""
+
+    async def generate(self, prompt: str) -> str:
+        raise httpx.ConnectError("connection refused")
+
+
 def make_job(**overrides: object) -> Job:
     defaults: dict[str, object] = {
         "normalized_title": "data engineer",
@@ -344,6 +352,32 @@ async def test_cover_letter_404_for_unknown_job(client: httpx.AsyncClient) -> No
     assert (await client.post("/api/jobs/999/cover-letter")).status_code == 404
 
 
+async def test_cover_letter_returns_502_when_llm_provider_fails(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    app = create_app(
+        session_factory=session_factory,
+        embedding_provider=FakeProvider(),
+        llm_provider=FailingLLMProvider(),
+    )
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            async with session_factory() as session:
+                job = make_job()
+                session.add(job)
+                await session.commit()
+                job_id = job.id
+
+            await client.post(
+                "/api/profile",
+                files={"resume": ("resume.txt", b"Experienced Python engineer.", "text/plain")},
+            )
+
+            response = await client.post(f"/api/jobs/{job_id}/cover-letter")
+            assert response.status_code == 502
+
+
 async def test_tracking_update_404_if_not_saved(client: httpx.AsyncClient) -> None:
     response = await client.patch("/api/jobs/999/tracking", json={"notes": "Follow up"})
     assert response.status_code == 404
@@ -371,6 +405,26 @@ async def test_tracking_update_reflected_in_saved_list(
     [entry] = listed.json()
     assert entry["notes"] == "Follow up"
     assert entry["reminder_at"] is not None
+
+
+async def test_tracking_accepts_a_naive_reminder_datetime(
+    client: httpx.AsyncClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    async with session_factory() as session:
+        job = make_job()
+        session.add(job)
+        await session.commit()
+        job_id = job.id
+
+    await client.post(f"/api/jobs/{job_id}/save")
+
+    # No UTC offset — a client that isn't jobscout's own frontend (which
+    # always calls `.toISOString()`) could plausibly send this.
+    update = await client.patch(
+        f"/api/jobs/{job_id}/tracking", json={"reminder_at": "2026-08-01T09:00:00"}
+    )
+    assert update.status_code == 200
+    assert update.json()["reminder_at"] == "2026-08-01T09:00:00Z"
 
 
 async def test_reminders_returns_only_due_rows_soonest_first(

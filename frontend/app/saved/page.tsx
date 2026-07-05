@@ -6,8 +6,9 @@ import { getReminders, getSaved } from "@/lib/api";
 
 export default async function SavedPage() {
   let saved;
+  let reminders;
   try {
-    saved = await getSaved();
+    [saved, reminders] = await Promise.all([getSaved(), getReminders(72).catch(() => [])]);
   } catch {
     return (
       <p className="text-sm text-red-500">
@@ -15,8 +16,6 @@ export default async function SavedPage() {
       </p>
     );
   }
-
-  const reminders = await getReminders(72).catch(() => []);
 
   if (saved.length === 0) {
     return <p className="text-sm text-neutral-500">No saved jobs yet — save one from the matches list.</p>;

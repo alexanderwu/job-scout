@@ -172,8 +172,9 @@ def skill_gap(resume_keywords: set[str], jobs: list[Job], *, top_n: int = 20) ->
     """Diff ``resume_keywords`` against the aggregate keyword frequency
     across ``jobs`` (a target role's postings), most-requested first."""
     counts = aggregate_keyword_frequencies(jobs)
-    missing = {keyword for keyword in counts if keyword not in resume_keywords}
-    matched = {keyword for keyword in counts if keyword in resume_keywords}
+    all_keywords = set(counts)
+    matched = all_keywords & resume_keywords
+    missing = all_keywords - resume_keywords
     return SkillGapResult(
         postings_considered=len(jobs),
         missing_keywords=_sorted_by_frequency(counts, missing, top_n=top_n),

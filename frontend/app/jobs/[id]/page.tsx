@@ -21,8 +21,10 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
     );
   }
 
-  const tailoring = await getTailoring(jobId).catch(() => null);
-  const coverLetter = await getCoverLetter(jobId).catch(() => null);
+  const [tailoring, coverLetter] = await Promise.all([
+    getTailoring(jobId).catch(() => null),
+    getCoverLetter(jobId).catch(() => null),
+  ]);
 
   return (
     <article className="space-y-4">

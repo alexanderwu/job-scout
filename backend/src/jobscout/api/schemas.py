@@ -8,10 +8,10 @@ from a different table, ``ProfileOut`` never exposes the embedding).
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from jobscout.matching import SkillGapResult, TailoringSuggestions
 from jobscout.models import CoverLetter, Job, SavedJob
@@ -118,6 +118,17 @@ class SaveJobStatusIn(BaseModel):
 class SavedJobTrackingIn(BaseModel):
     reminder_at: datetime | None = None
     notes: str | None = None
+
+    @field_validator("reminder_at")
+    @classmethod
+    def _assume_utc_if_naive(cls, value: datetime | None) -> datetime | None:
+        # asyncpg requires tz-aware values for a `timestamptz` column
+        # (models.SavedJob.reminder_at); a client that omits an offset
+        # would otherwise crash the request instead of just being
+        # interpreted as UTC.
+        if value is not None and value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value
 
 
 class KeywordFrequency(BaseModel):

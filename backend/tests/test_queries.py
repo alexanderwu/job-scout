@@ -219,6 +219,32 @@ async def test_upsert_saved_job_status_stamps_transition_timestamps(session: Asy
     assert interviewing.interviewing_at == datetime(2026, 1, 3, tzinfo=UTC)
 
 
+async def test_upsert_saved_job_status_does_not_restamp_on_reentry(session: AsyncSession) -> None:
+    """Re-entering a status (e.g. reapplying after a rejection) must not
+    overwrite the original timestamp for that status — the timeline
+    should preserve the first time each state was reached."""
+    job = make_job(canonical_url="https://example.com/1")
+    session.add(job)
+    await session.commit()
+
+    await upsert_saved_job_status(session, job.id, "applied", now=datetime(2026, 1, 2, tzinfo=UTC))
+    await session.commit()
+    await upsert_saved_job_status(session, job.id, "rejected", now=datetime(2026, 1, 3, tzinfo=UTC))
+    await session.commit()
+    reapplied = await upsert_saved_job_status(
+        session, job.id, "applied", now=datetime(2026, 2, 1, tzinfo=UTC)
+    )
+    await session.commit()
+
+    # sqlite (unlike Postgres) doesn't reliably round-trip tzinfo across a
+    # re-fetched row, so compare naively here — the point under test is
+    # the *value*, which the guard preserved instead of restamping.
+    assert reapplied.applied_at is not None
+    assert reapplied.rejected_at is not None
+    assert reapplied.applied_at.replace(tzinfo=None) == datetime(2026, 1, 2)
+    assert reapplied.rejected_at.replace(tzinfo=None) == datetime(2026, 1, 3)
+
+
 async def test_upsert_saved_job_tracking_sets_reminder_and_notes(session: AsyncSession) -> None:
     job = make_job(canonical_url="https://example.com/1")
     session.add(job)

@@ -23,6 +23,7 @@ export function TrackingForm({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -30,12 +31,15 @@ export function TrackingForm({
     const reminder = form.get("reminder_at") as string;
     const notesValue = form.get("notes") as string;
     setPending(true);
+    setError(null);
     try {
       await updateSavedJobTracking(jobId, {
         reminder_at: reminder ? new Date(reminder).toISOString() : null,
         notes: notesValue || null,
       });
       router.refresh();
+    } catch {
+      setError("Save failed — try again.");
     } finally {
       setPending(false);
     }
@@ -72,7 +76,7 @@ export function TrackingForm({
           className="block w-full rounded-md border border-neutral-300 bg-transparent px-2 py-1 text-sm dark:border-neutral-700"
         />
       </label>
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         <button
           type="submit"
           disabled={pending}
@@ -83,6 +87,7 @@ export function TrackingForm({
         <button type="button" onClick={() => setOpen(false)} className="text-xs text-neutral-500">
           Cancel
         </button>
+        {error && <span className="text-xs text-red-500">{error}</span>}
       </div>
     </form>
   );

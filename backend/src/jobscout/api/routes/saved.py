@@ -8,9 +8,8 @@ from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from jobscout.api.deps import get_session
+from jobscout.api.deps import get_job_or_404, get_session
 from jobscout.api.schemas import SavedJobOut, SavedJobTrackingIn, SaveJobStatusIn
-from jobscout.models import Job
 from jobscout.queries import (
     delete_saved_job,
     list_due_reminders,
@@ -29,9 +28,7 @@ async def get_saved(session: AsyncSession = Depends(get_session)) -> list[SavedJ
 
 
 async def _set_status(session: AsyncSession, job_id: int, status: str) -> SavedJobOut:
-    job = await session.get(Job, job_id)
-    if job is None:
-        raise HTTPException(status_code=404, detail="Job not found")
+    job = await get_job_or_404(job_id, session)
     saved = await upsert_saved_job_status(session, job_id, status, datetime.now(UTC))
     await session.commit()
     saved.job = job
@@ -69,9 +66,7 @@ async def update_tracking(
     body: SavedJobTrackingIn,
     session: AsyncSession = Depends(get_session),
 ) -> SavedJobOut:
-    job = await session.get(Job, job_id)
-    if job is None:
-        raise HTTPException(status_code=404, detail="Job not found")
+    job = await get_job_or_404(job_id, session)
     saved = await upsert_saved_job_tracking(
         session, job_id, reminder_at=body.reminder_at, notes=body.notes
     )
