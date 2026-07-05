@@ -91,6 +91,7 @@ class HiringCafeSource(JobSource):
             title=info.get("title") or "",
             company=processed.get("company_name"),
             location=processed.get("formatted_workplace_location"),
+            description=info.get("description"),
             posted_at=_parse_datetime(processed.get("estimated_publish_date")),
             fetched_at=fetched_at,
             raw=item,

@@ -55,6 +55,11 @@ class RawPosting(BaseModel):
     title: str = Field(min_length=1)
     company: str | None = None
     location: str | None = None
+    description: str | None = None
+    """Full posting text, if the source provides one. Feeds Phase 2
+    embeddings, so a missing description just means that job can't be
+    matched semantically yet, not a validation failure."""
+
     posted_at: datetime | None = None
     """When the source says the job was published, if it says at all."""
 

@@ -17,8 +17,11 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, UniqueConstraint
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import JSON, DateTime, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+from jobscout.embeddings.base import EMBEDDING_DIM
 
 
 class Base(DeclarativeBase):
@@ -43,6 +46,15 @@ class Job(Base):
     company: Mapped[str | None]
     location: Mapped[str | None]
     posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    description: Mapped[str | None] = mapped_column(Text)
+    """Full posting text, kept for embedding (Phase 2) and display. Comes
+    straight from the source's own description field, no reformatting."""
+
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM))
+    """Semantic embedding of ``description`` (Phase 2 matching), produced
+    by whichever ``EmbeddingProvider`` last embedded this job. Null until
+    an embedding batch job runs, since Phase 1 ingestion doesn't embed."""
 
     first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True))

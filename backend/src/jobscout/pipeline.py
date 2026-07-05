@@ -63,6 +63,8 @@ async def _ingest_posting(
         existing_posting.raw = posting.raw
         existing_posting.fetched_at = posting.fetched_at
         existing_posting.job.last_seen = max(existing_posting.job.last_seen, posting.fetched_at)
+        if posting.description is not None:
+            existing_posting.job.description = posting.description
         stats.postings_updated += 1
         return
 
@@ -87,6 +89,7 @@ async def _ingest_posting(
             title=posting.title,
             company=posting.company,
             location=posting.location,
+            description=posting.description,
             posted_at=posting.posted_at,
             first_seen=posting.fetched_at,
             last_seen=posting.fetched_at,
@@ -95,6 +98,8 @@ async def _ingest_posting(
         stats.jobs_created += 1
     else:
         job.last_seen = max(job.last_seen, posting.fetched_at)
+        if posting.description is not None:
+            job.description = posting.description
 
     session.add(
         JobPosting(

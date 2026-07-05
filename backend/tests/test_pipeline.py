@@ -141,6 +141,33 @@ async def test_same_normalized_title_and_company_merges(session: AsyncSession) -
     assert await posting_count(session) == 2
 
 
+async def test_description_is_stored_and_refreshed(session: AsyncSession) -> None:
+    await ingest(
+        [HiringCafeFake([make_posting(description="Build pipelines.")])],
+        session,
+    )
+    job = await session.scalar(select(Job))
+    assert job is not None
+    assert job.description == "Build pipelines."
+
+    await ingest(
+        [HiringCafeFake([make_posting(description="Build pipelines, now with more detail.")])],
+        session,
+    )
+    job = await session.scalar(select(Job))
+    assert job is not None
+    assert job.description == "Build pipelines, now with more detail."
+
+
+async def test_missing_description_does_not_clear_existing_one(session: AsyncSession) -> None:
+    await ingest([HiringCafeFake([make_posting(description="Build pipelines.")])], session)
+    await ingest([HiringCafeFake([make_posting(description=None)])], session)
+
+    job = await session.scalar(select(Job))
+    assert job is not None
+    assert job.description == "Build pipelines."
+
+
 async def test_different_jobs_stay_separate(session: AsyncSession) -> None:
     await ingest(
         [
