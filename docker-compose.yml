@@ -1,0 +1,41 @@
+# Local infrastructure for Job Scout (see PLAN.md "Database" and "Caching / queueing").
+#
+# - postgres: pgvector/pgvector image = stock Postgres + the pgvector extension
+#   preinstalled, so Phase 2 vector search needs no extra install step.
+#   (The extension still has to be enabled per-database with
+#   `CREATE EXTENSION vector;` — that will live in the Phase 1 migrations.)
+# - redis: cache + RQ job-queue backend from Phase 1 on.
+#
+# Start with:  docker compose up -d
+# Credentials here are for local development only; deployed environments get
+# real secrets via their own config, never this file.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: jobscout
+      POSTGRES_PASSWORD: jobscout
+      POSTGRES_DB: jobscout
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobscout -d jobscout"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

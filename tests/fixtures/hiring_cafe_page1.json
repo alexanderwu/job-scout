@@ -1,0 +1,28 @@
+{
+  "results": [
+    {
+      "id": "job-abc123",
+      "apply_url": "https://hiring.cafe/viewjob/job-abc123",
+      "job_information": {
+        "title": "Senior Data Engineer",
+        "description": "Build and operate batch and streaming pipelines..."
+      },
+      "v5_processed_job_data": {
+        "company_name": "Acme Corp",
+        "formatted_workplace_location": "San Francisco, CA",
+        "estimated_publish_date": "2026-07-01T12:00:00+00:00"
+      }
+    },
+    {
+      "id": "job-def456",
+      "apply_url": "https://boards.example.com/acme/def456",
+      "job_information": {
+        "title": "Machine Learning Engineer"
+      },
+      "v5_processed_job_data": {
+        "company_name": "Beta Labs"
+      }
+    }
+  ],
+  "total": 2
+}
