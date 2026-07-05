@@ -45,22 +45,43 @@ Job Scout is at the foundations stage: the roadmap and tech stack are settled (s
 - **Then:** the matching engine that ranks jobs against a candidate profile, with a CLI to use it daily (Phase 2 — the real MVP).
 - **Later:** web frontend, career-copilot features (skill-gap analysis, resume tailoring, cover letters), application tracker, and market-insight dashboards.
 
-## Development
+## Getting started
 
-Requires [uv](https://docs.astral.sh/uv/) (manages Python and dependencies) and Docker.
+### Prerequisites
+
+- **[uv](https://docs.astral.sh/uv/)** — manages the Python toolchain and dependencies. uv installs the pinned Python version itself (from `.python-version`), so you don't need a separate Python install.
+- **Docker** (with Compose) — runs local Postgres and Redis.
+- **[just](https://github.com/casey/just)** *(optional)* — a task runner for the shortcut commands below. Everything it does is a thin wrapper over `uv`/`docker` commands, so it's convenience, not a hard dependency. Install with `uv tool install rust-just`, `brew install just`, or `cargo install just`.
+
+### Setup
 
 ```sh
-uv sync                    # create .venv with the pinned Python + all deps
-docker compose up -d       # local Postgres (with pgvector) + Redis
-cp .env.example .env       # local connection strings
+git clone https://github.com/alexanderwu/job-scout.git
+cd job-scout
 
-uv run pytest              # tests
-uv run ruff format .       # format
-uv run ruff check .        # lint
-uv run mypy                # type check (strict)
+just install        # or: uv sync          — create .venv with deps
+just up             # or: docker compose up -d — start Postgres + Redis
+cp .env.example .env                        # local connection strings
 ```
 
-CI runs the same four checks on every push and pull request (`.github/workflows/ci.yml`).
+### Everyday commands
+
+With `just` (run `just` alone to list them all):
+
+| Command | What it does |
+|---|---|
+| `just install` | Sync the virtualenv with `pyproject.toml` / `uv.lock` |
+| `just up` / `just down` | Start / stop local Postgres + Redis |
+| `just reset` | Stop services **and** wipe their data volumes |
+| `just test` | Run the test suite (`just test -k throttle` passes args through) |
+| `just fmt` | Format code |
+| `just lint` | Lint, auto-fixing what's safe |
+| `just typecheck` | Run mypy (strict) |
+| `just check` | The full CI gate: format check + lint + typecheck + tests |
+
+Without `just`, the equivalents are `uv sync`, `docker compose up -d`, `uv run pytest`, `uv run ruff format .`, `uv run ruff check .`, and `uv run mypy`.
+
+CI runs the same checks as `just check` on every push and pull request (`.github/workflows/ci.yml`), so running it locally before pushing catches anything CI would.
 
 ## About this project
 
