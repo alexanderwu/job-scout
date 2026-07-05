@@ -1,8 +1,25 @@
 # Frontend (Phase 3)
 
-Placeholder for the Next.js web app described in `PLAN.md` Phase 3
-(resume upload, match list, job detail, save/apply tracking).
+The Next.js web app described in `PLAN.md` Phase 3: resume upload, ranked
+match list, job detail, and a saved/applied tracker, talking to the
+FastAPI backend in `backend/`.
 
-Nothing lives here yet — through Phase 2 the backend CLI is the daily-driver
-interface, and the directory exists now only so the `backend/` + `frontend/`
-split is settled before any code depends on paths.
+See the repo root `README.md`'s "Running the frontend" section for setup.
+Quick version:
+
+```sh
+npm install
+cp .env.local.example .env.local   # points at the API; defaults to localhost:8000
+npm run dev                        # http://localhost:3000
+```
+
+The backend (`jobscout serve`, or `just serve` from the repo root) needs
+to be running for any page to load data.
+
+## Layout
+
+```
+app/                  Next.js App Router pages (/, /jobs/[id], /saved).
+components/           Shared UI: NavBar, JobCard, ResumeUpload, StatusControl, FeedBanner.
+lib/api.ts            Typed client for the backend API (mirrors backend/src/jobscout/api/schemas.py).
+```

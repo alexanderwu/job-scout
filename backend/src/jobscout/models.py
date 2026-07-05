@@ -82,3 +82,44 @@ class JobPosting(Base):
     raw: Mapped[dict[str, Any]] = mapped_column(JSON)
 
     job: Mapped[Job] = relationship(back_populates="postings")
+
+
+class Profile(Base):
+    """The user's resume, persisted once so the web app (Phase 3) can rank
+    and poll for matches without re-uploading on every request.
+
+    Singleton table: this is a personal, single-user tool (PLAN.md never
+    introduces accounts), so there's exactly one row rather than a
+    ``user_id`` foreign key. ``queries.get_profile``/``upsert_profile``
+    enforce the "one row" convention.
+    """
+
+    __tablename__ = "profile"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    resume_text: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[list[float]] = mapped_column(Vector(EMBEDDING_DIM))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class SavedJob(Base):
+    """Application-tracking status for a job the user has saved (Phase 3
+    "save/apply tracking"). One row per tracked job; untracked jobs simply
+    have no row here."""
+
+    __tablename__ = "saved_jobs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"), unique=True)
+
+    status: Mapped[str]
+    """One of ``SAVED_JOB_STATUSES`` below. Plain string column (like
+    ``JobPosting.source``) — validated at the API boundary, not the DB."""
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    job: Mapped[Job] = relationship()
+
+
+SAVED_JOB_STATUSES = ("saved", "applied", "interviewing", "rejected", "offer")

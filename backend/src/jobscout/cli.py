@@ -76,6 +76,12 @@ async def _cmd_embed(args: argparse.Namespace) -> None:
         await engine.dispose()
 
 
+def _cmd_serve(args: argparse.Namespace) -> None:
+    import uvicorn
+
+    uvicorn.run("jobscout.api.app:app", host=args.host, port=args.port, reload=args.reload)
+
+
 async def _cmd_match(args: argparse.Namespace) -> None:
     engine = make_engine()
     try:
@@ -132,8 +138,19 @@ def main() -> None:
     match_parser.add_argument("--limit", type=int, default=10)
     match_parser.set_defaults(func=_cmd_match)
 
+    serve_parser = subcommands.add_parser(
+        "serve", help="Run the Phase 3 API (FastAPI, via uvicorn)."
+    )
+    serve_parser.add_argument("--host", default="127.0.0.1")
+    serve_parser.add_argument("--port", type=int, default=8000)
+    serve_parser.add_argument("--reload", action="store_true")
+    serve_parser.set_defaults(func=_cmd_serve, is_async=False)
+
     args = parser.parse_args()
-    asyncio.run(args.func(args))
+    if getattr(args, "is_async", True):
+        asyncio.run(args.func(args))
+    else:
+        args.func(args)
 
 
 if __name__ == "__main__":

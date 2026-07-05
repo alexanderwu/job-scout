@@ -6,7 +6,7 @@ from pathlib import Path
 
 from pypdf import PdfWriter
 
-from jobscout.resume import read_resume_text
+from jobscout.resume import extract_resume_text, read_resume_text
 
 
 def test_reads_plain_text_file(tmp_path: Path) -> None:
@@ -32,3 +32,8 @@ def test_reads_pdf_file_without_crashing(tmp_path: Path) -> None:
     # real .pdf is routed through the PDF parser instead of being read as
     # raw bytes/text.
     assert read_resume_text(path) == ""
+
+
+def test_extract_resume_text_from_bytes_routes_on_filename_suffix() -> None:
+    data = b"Senior Data Engineer, Python, SQL."
+    assert extract_resume_text(data, "resume.txt") == "Senior Data Engineer, Python, SQL."

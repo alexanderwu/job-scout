@@ -39,6 +39,11 @@ migrate:
 test *args:
     uv run pytest {{ args }}
 
+# Run the Phase 3 API (FastAPI via uvicorn), needs DATABASE_URL set.
+[working-directory('backend')]
+serve:
+    uv run jobscout serve --reload
+
 # Format code in place.
 [working-directory('backend')]
 fmt:

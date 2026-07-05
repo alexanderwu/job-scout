@@ -43,15 +43,16 @@ Job Scout is at the foundations stage: the roadmap and tech stack are settled (s
 - **Done (Phase 0):** project scaffold (`uv`/`ruff`/`mypy`/`pytest`, CI), local Postgres+pgvector and Redis via Docker Compose, the `JobSource` adapter interface, and a first hiring.cafe adapter (tested against fixtures; live API shape still needs manual confirmation).
 - **Done (Phase 1):** the ingestion pipeline — normalized `jobs`/`job_postings` schema (Alembic migrations), tiered dedupe (exact source+ID, canonical URL, normalized title+company), and a `jobscout` CLI (`jobscout ingest`, `jobscout recent`) to run ingestion on demand and query what's new.
 - **Done (Phase 2 — the real MVP):** local sentence-transformers embeddings stored in pgvector (`jobscout embed`), and resume matching with visible reasoning (`jobscout match resume.pdf`) — paste a resume, get ranked jobs with the overlapping keywords that justify each match. This is the point where Job Scout becomes a tool I actually use.
-- **Later:** web frontend, career-copilot features (skill-gap analysis, resume tailoring, cover letters), application tracker, and market-insight dashboards.
+- **Done (Phase 3):** a FastAPI backend (`jobscout serve`) exposing job search/detail, a persisted resume profile, ranked matches, save/apply-status tracking, and a polling feed for new matching jobs — plus a Next.js frontend (resume upload, match list, job detail, saved/applied tracker) so the whole flow works end to end in a browser, no manual DB queries needed.
+- **Later:** career-copilot features (skill-gap analysis, resume tailoring, cover letters), richer application-tracker reminders, and market-insight dashboards.
 
 ## Getting started
 
 ### Repository layout
 
 ```
-backend/     Python app — ingestion, matching, and (Phase 3) the API. All uv/pytest/mypy commands run here.
-frontend/    Next.js web app (Phase 3 — placeholder for now).
+backend/     Python app — ingestion, matching, and the FastAPI API. All uv/pytest/mypy commands run here.
+frontend/    Next.js web app (Phase 3): resume upload, match list, job detail, saved/applied tracker.
 docker-compose.yml   Local Postgres (pgvector) + Redis, shared infra for both.
 justfile     Task runner shortcuts (see below).
 ```
@@ -61,6 +62,7 @@ justfile     Task runner shortcuts (see below).
 - **[uv](https://docs.astral.sh/uv/)** — manages the Python toolchain and dependencies. uv installs the pinned Python version itself (from `.python-version`), so you don't need a separate Python install.
 - **Docker** (with Compose) — runs local Postgres and Redis.
 - **[just](https://github.com/casey/just)** *(optional)* — a task runner for the shortcut commands below. Everything it does is a thin wrapper over `uv`/`docker` commands, so it's convenience, not a hard dependency. Install with `uv tool install rust-just`, `brew install just`, or `cargo install just`.
+- **Node.js 20+** — only needed for the `frontend/` web app.
 
 ### Setup
 
@@ -90,10 +92,22 @@ With `just` (run `just` alone to list them all):
 | `just lint` | Lint, auto-fixing what's safe |
 | `just typecheck` | Run mypy (strict) |
 | `just check` | The full CI gate: format check + lint + typecheck + tests |
+| `just serve` | Run the API (FastAPI via uvicorn, with autoreload) on `:8000` |
 
-Without `just`, the equivalents are `docker compose up -d` (from the root) and, from `backend/`, `uv sync`, `uv run pytest`, `uv run ruff format .`, `uv run ruff check .`, and `uv run mypy`.
+Without `just`, the equivalents are `docker compose up -d` (from the root) and, from `backend/`, `uv sync`, `uv run pytest`, `uv run ruff format .`, `uv run ruff check .`, `uv run mypy`, and `uv run jobscout serve --reload`.
 
 CI runs the same checks as `just check` on every push and pull request (`.github/workflows/ci.yml`), so running it locally before pushing catches anything CI would.
+
+### Running the frontend
+
+```sh
+cd frontend
+npm install
+cp .env.local.example .env.local   # points at the API; defaults to localhost:8000
+npm run dev                        # http://localhost:3000
+```
+
+The frontend talks to the backend over HTTP (`NEXT_PUBLIC_API_BASE_URL`), so `jobscout serve` (or `just serve`) needs to be running too. Upload a resume on the home page to see ranked matches — `jobscout ingest`/`jobscout embed` need to have populated the corpus first.
 
 ## About this project
 
