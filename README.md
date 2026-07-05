@@ -47,6 +47,15 @@ Job Scout is at the foundations stage: the roadmap and tech stack are settled (s
 
 ## Getting started
 
+### Repository layout
+
+```
+backend/     Python app — ingestion, matching, and (Phase 3) the API. All uv/pytest/mypy commands run here.
+frontend/    Next.js web app (Phase 3 — placeholder for now).
+docker-compose.yml   Local Postgres (pgvector) + Redis, shared infra for both.
+justfile     Task runner shortcuts (see below).
+```
+
 ### Prerequisites
 
 - **[uv](https://docs.astral.sh/uv/)** — manages the Python toolchain and dependencies. uv installs the pinned Python version itself (from `.python-version`), so you don't need a separate Python install.
@@ -59,10 +68,12 @@ Job Scout is at the foundations stage: the roadmap and tech stack are settled (s
 git clone https://github.com/alexanderwu/job-scout.git
 cd job-scout
 
-just install        # or: uv sync          — create .venv with deps
-just up             # or: docker compose up -d — start Postgres + Redis
-cp .env.example .env                        # local connection strings
+just install        # or: cd backend && uv sync     — create .venv with deps
+just up             # or: docker compose up -d       — start Postgres + Redis
+cp backend/.env.example backend/.env               # local connection strings
 ```
+
+`just` recipes for the Python app run inside `backend/` automatically, so you can call them from the repo root. Without `just`, `cd backend` first for the `uv`/`pytest`/`mypy` commands.
 
 ### Everyday commands
 
@@ -79,7 +90,7 @@ With `just` (run `just` alone to list them all):
 | `just typecheck` | Run mypy (strict) |
 | `just check` | The full CI gate: format check + lint + typecheck + tests |
 
-Without `just`, the equivalents are `uv sync`, `docker compose up -d`, `uv run pytest`, `uv run ruff format .`, `uv run ruff check .`, and `uv run mypy`.
+Without `just`, the equivalents are `docker compose up -d` (from the root) and, from `backend/`, `uv sync`, `uv run pytest`, `uv run ruff format .`, `uv run ruff check .`, and `uv run mypy`.
 
 CI runs the same checks as `just check` on every push and pull request (`.github/workflows/ci.yml`), so running it locally before pushing catches anything CI would.
 

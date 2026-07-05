@@ -11,6 +11,11 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    # The Python app lives in backend/; run every shell step there. Steps
+    # using `uses:` (checkout, setup-uv) ignore this and act on the repo root.
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
 
