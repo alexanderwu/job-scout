@@ -47,6 +47,15 @@ class Job(Base):
     location: Mapped[str | None]
     posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    salary_min: Mapped[int | None]
+    salary_max: Mapped[int | None]
+    salary_currency: Mapped[str | None]
+    """Best-effort comp figures from whichever source reported them
+    (PLAN.md Phase 5). All nullable and independently optional — a
+    posting may give only one bound, or none at all — so Phase 5
+    aggregation (``insights.py``) always treats missing salary data as
+    "excluded from this stat", never as zero."""
+
     description: Mapped[str | None] = mapped_column(Text)
     """Full posting text, kept for embedding (Phase 2) and display. Comes
     straight from the source's own description field, no reformatting."""

@@ -93,6 +93,32 @@ async def test_http_error_raises_instead_of_yielding_nothing() -> None:
         _ = [p async for p in source.fetch()]
 
 
+async def test_missing_salary_fields_become_none() -> None:
+    client, _ = make_client({0: PAGE1})
+    source = HiringCafeSource(client, limiter=instant_limiter())
+
+    postings = [p async for p in source.fetch()]
+
+    assert postings[0].salary_min is None
+    assert postings[0].salary_max is None
+    assert postings[0].salary_currency is None
+
+
+async def test_salary_fields_extracted_when_present() -> None:
+    item = json.loads(json.dumps(PAGE1["results"][0]))
+    item["v5_processed_job_data"]["yearly_min_compensation"] = 120000
+    item["v5_processed_job_data"]["yearly_max_compensation"] = 160000
+    item["v5_processed_job_data"]["salary_currency"] = "USD"
+    client, _ = make_client({0: {"results": [item]}})
+    source = HiringCafeSource(client, limiter=instant_limiter())
+
+    [posting] = [p async for p in source.fetch()]
+
+    assert posting.salary_min == 120000
+    assert posting.salary_max == 160000
+    assert posting.salary_currency == "USD"
+
+
 async def test_search_state_is_sent_in_payload() -> None:
     client, requests = make_client({})
     state = {"searchQuery": "data engineer"}

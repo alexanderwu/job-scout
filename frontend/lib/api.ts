@@ -115,6 +115,35 @@ export interface CoverLetter {
   updated_at: string;
 }
 
+export interface SalaryGroup {
+  group: string;
+  job_count: number;
+  min_salary: number;
+  max_salary: number;
+  avg_salary: number;
+}
+
+export interface SalaryInsights {
+  group_by: "title" | "location";
+  groups: SalaryGroup[];
+  overall: SalaryGroup | null;
+}
+
+export interface SkillTrendPoint {
+  week_start: string;
+  count: number;
+}
+
+export interface SkillTrend {
+  keyword: string;
+  points: SkillTrendPoint[];
+}
+
+export interface SkillTrends {
+  weeks: number;
+  trends: SkillTrend[];
+}
+
 export function getJobs(params?: { location?: string; limit?: number; offset?: number }) {
   const query = new URLSearchParams();
   if (params?.location) query.set("location", params.location);
@@ -211,4 +240,28 @@ export function getCoverLetter(jobId: number) {
 
 export function generateCoverLetter(jobId: number) {
   return apiFetch<CoverLetter>(`/api/jobs/${jobId}/cover-letter`, { method: "POST" });
+}
+
+export function getSalaryInsights(params?: {
+  groupBy?: "title" | "location";
+  role?: string;
+  location?: string;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+  if (params?.groupBy) query.set("group_by", params.groupBy);
+  if (params?.role) query.set("role", params.role);
+  if (params?.location) query.set("location", params.location);
+  if (params?.limit != null) query.set("limit", String(params.limit));
+  const qs = query.toString();
+  return apiFetch<SalaryInsights>(`/api/insights/salary${qs ? `?${qs}` : ""}`);
+}
+
+export function getSkillTrends(params?: { role?: string; weeks?: number; top?: number }) {
+  const query = new URLSearchParams();
+  if (params?.role) query.set("role", params.role);
+  if (params?.weeks != null) query.set("weeks", String(params.weeks));
+  if (params?.top != null) query.set("top", String(params.top));
+  const qs = query.toString();
+  return apiFetch<SkillTrends>(`/api/insights/skills${qs ? `?${qs}` : ""}`);
 }

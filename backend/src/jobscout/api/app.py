@@ -19,7 +19,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from jobscout.api.routes import cover_letters, feed, jobs, matches, profile, saved, skills
+from jobscout.api.routes import cover_letters, feed, insights, jobs, matches, profile, saved, skills
 from jobscout.db import make_engine, make_session_factory
 from jobscout.embeddings.base import EmbeddingProvider
 from jobscout.embeddings.local import LocalEmbeddingProvider
@@ -75,6 +75,7 @@ def create_app(
     app.include_router(saved.router, prefix="/api")
     app.include_router(skills.router, prefix="/api")
     app.include_router(cover_letters.router, prefix="/api")
+    app.include_router(insights.router, prefix="/api")
     return app
 
 

@@ -474,3 +474,73 @@ async def test_status_transitions_stamp_timeline_timestamps(
     assert entry["applied_at"] is not None
     assert entry["interviewing_at"] is not None
     assert entry["rejected_at"] is None
+
+
+async def test_salary_insights_groups_by_title_and_reports_overall(
+    client: httpx.AsyncClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    async with session_factory() as session:
+        session.add_all(
+            [
+                make_job(
+                    canonical_url="https://example.com/1",
+                    salary_min=100_000,
+                    salary_max=140_000,
+                ),
+                make_job(
+                    canonical_url="https://example.com/2",
+                    salary_min=120_000,
+                    salary_max=160_000,
+                ),
+                make_job(canonical_url="https://example.com/3"),  # no salary data
+            ]
+        )
+        await session.commit()
+
+    response = await client.get("/api/insights/salary", params={"group_by": "title"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["group_by"] == "title"
+    [group] = body["groups"]
+    assert group["group"] == "data engineer"
+    assert group["job_count"] == 2
+    assert group["min_salary"] == 100_000
+    assert group["max_salary"] == 160_000
+    assert body["overall"]["job_count"] == 2
+
+
+async def test_salary_insights_overall_is_null_without_any_salary_data(
+    client: httpx.AsyncClient,
+) -> None:
+    response = await client.get("/api/insights/salary")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["groups"] == []
+    assert body["overall"] is None
+
+
+async def test_skill_trends_buckets_recent_postings_by_week(
+    client: httpx.AsyncClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    now = datetime.now(tz=UTC)
+    async with session_factory() as session:
+        session.add(
+            make_job(
+                canonical_url="https://example.com/1",
+                title="X",
+                description="Python and Kubernetes required.",
+                first_seen=now,
+            )
+        )
+        await session.commit()
+
+    response = await client.get("/api/insights/skills", params={"weeks": 4})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["weeks"] == 4
+    keywords = {trend["keyword"] for trend in body["trends"]}
+    assert "python" in keywords
+    assert "kubernetes" in keywords
+    for trend in body["trends"]:
+        assert len(trend["points"]) == 4
+        assert sum(point["count"] for point in trend["points"]) >= 1

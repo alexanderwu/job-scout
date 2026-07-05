@@ -159,6 +159,39 @@ async def test_description_is_stored_and_refreshed(session: AsyncSession) -> Non
     assert job.description == "Build pipelines, now with more detail."
 
 
+async def test_salary_is_stored_and_refreshed(session: AsyncSession) -> None:
+    await ingest(
+        [HiringCafeFake([make_posting(salary_min=100_000, salary_max=140_000)])],
+        session,
+    )
+    job = await session.scalar(select(Job))
+    assert job is not None
+    assert job.salary_min == 100_000
+    assert job.salary_max == 140_000
+
+    await ingest(
+        [HiringCafeFake([make_posting(salary_min=110_000, salary_max=150_000)])],
+        session,
+    )
+    job = await session.scalar(select(Job))
+    assert job is not None
+    assert job.salary_min == 110_000
+    assert job.salary_max == 150_000
+
+
+async def test_missing_salary_does_not_clear_existing_one(session: AsyncSession) -> None:
+    await ingest(
+        [HiringCafeFake([make_posting(salary_min=100_000, salary_max=140_000)])],
+        session,
+    )
+    await ingest([HiringCafeFake([make_posting(salary_min=None, salary_max=None)])], session)
+
+    job = await session.scalar(select(Job))
+    assert job is not None
+    assert job.salary_min == 100_000
+    assert job.salary_max == 140_000
+
+
 async def test_missing_description_does_not_clear_existing_one(session: AsyncSession) -> None:
     await ingest([HiringCafeFake([make_posting(description="Build pipelines.")])], session)
     await ingest([HiringCafeFake([make_posting(description=None)])], session)

@@ -84,6 +84,7 @@ class HiringCafeSource(JobSource):
         # a schema surprise worth failing loudly on (pydantic raises).
         info = item.get("job_information") or {}
         processed = item.get("v5_processed_job_data") or {}
+        salary_min, salary_max, salary_currency = _extract_salary(processed)
         return RawPosting(
             source=self.name,
             external_id=str(item.get("id", "")),
@@ -93,6 +94,9 @@ class HiringCafeSource(JobSource):
             location=processed.get("formatted_workplace_location"),
             description=info.get("description"),
             posted_at=_parse_datetime(processed.get("estimated_publish_date")),
+            salary_min=salary_min,
+            salary_max=salary_max,
+            salary_currency=salary_currency,
             fetched_at=fetched_at,
             raw=item,
         )
@@ -104,4 +108,26 @@ def _parse_datetime(value: str | None) -> datetime | None:
     try:
         return datetime.fromisoformat(value)
     except ValueError:
+        return None
+
+
+def _extract_salary(processed: dict[str, Any]) -> tuple[int | None, int | None, str | None]:
+    # Best-effort, like every other field pulled out of ``processed`` in
+    # this adapter (see the module warning): the exact key names below
+    # are an educated guess at hiring.cafe's annualized-compensation
+    # fields, unconfirmed against the live API. A wrong guess just means
+    # Phase 5 salary insights stay empty, not a crash.
+    return (
+        _to_int(processed.get("yearly_min_compensation")),
+        _to_int(processed.get("yearly_max_compensation")),
+        processed.get("salary_currency"),
+    )
+
+
+def _to_int(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
         return None

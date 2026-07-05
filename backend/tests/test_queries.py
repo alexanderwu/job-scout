@@ -11,10 +11,12 @@ from jobscout.queries import (
     get_cover_letter,
     get_profile,
     get_saved_job,
+    jobs_first_seen_between,
     jobs_first_seen_since,
     jobs_matching_role,
     jobs_missing_embeddings,
     jobs_with_embeddings,
+    jobs_with_salary,
     list_due_reminders,
     list_saved_jobs,
     search_jobs,
@@ -339,5 +341,97 @@ async def test_jobs_matching_role_filters_by_title_substring_case_insensitively(
     await session.commit()
 
     result = await jobs_matching_role(session, "data engineer")
+
+    assert [job.canonical_url for job in result] == ["https://example.com/1"]
+
+
+async def test_jobs_with_salary_only_returns_jobs_with_at_least_one_bound(
+    session: AsyncSession,
+) -> None:
+    has_range = make_job(
+        canonical_url="https://example.com/1", salary_min=100_000, salary_max=140_000
+    )
+    has_floor_only = make_job(canonical_url="https://example.com/2", salary_min=100_000)
+    no_salary = make_job(canonical_url="https://example.com/3")
+    session.add_all([has_range, has_floor_only, no_salary])
+    await session.commit()
+
+    result = await jobs_with_salary(session)
+
+    assert {job.canonical_url for job in result} == {
+        "https://example.com/1",
+        "https://example.com/2",
+    }
+
+
+async def test_jobs_with_salary_filters_by_role_and_location(session: AsyncSession) -> None:
+    match = make_job(
+        canonical_url="https://example.com/1",
+        title="Data Engineer",
+        location="Remote",
+        salary_min=100_000,
+    )
+    wrong_role = make_job(
+        canonical_url="https://example.com/2",
+        title="Product Manager",
+        location="Remote",
+        salary_min=100_000,
+    )
+    wrong_location = make_job(
+        canonical_url="https://example.com/3",
+        title="Data Engineer",
+        location="Onsite",
+        salary_min=100_000,
+    )
+    session.add_all([match, wrong_role, wrong_location])
+    await session.commit()
+
+    result = await jobs_with_salary(session, role="Data Engineer", location="Remote")
+
+    assert [job.canonical_url for job in result] == ["https://example.com/1"]
+
+
+async def test_jobs_first_seen_between_filters_range_role_and_description(
+    session: AsyncSession,
+) -> None:
+    in_range = make_job(
+        canonical_url="https://example.com/1",
+        title="Data Engineer",
+        description="Build pipelines.",
+        first_seen=datetime(2026, 6, 5, tzinfo=UTC),
+    )
+    before_range = make_job(
+        canonical_url="https://example.com/2",
+        title="Data Engineer",
+        description="Build pipelines.",
+        first_seen=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    after_range = make_job(
+        canonical_url="https://example.com/3",
+        title="Data Engineer",
+        description="Build pipelines.",
+        first_seen=datetime(2026, 7, 1, tzinfo=UTC),
+    )
+    no_description = make_job(
+        canonical_url="https://example.com/4",
+        title="Data Engineer",
+        description=None,
+        first_seen=datetime(2026, 6, 6, tzinfo=UTC),
+    )
+    wrong_role = make_job(
+        canonical_url="https://example.com/5",
+        title="Product Manager",
+        description="Ship things.",
+        first_seen=datetime(2026, 6, 7, tzinfo=UTC),
+    )
+    session.add_all([in_range, before_range, after_range, no_description, wrong_role])
+    await session.commit()
+
+    result = await jobs_first_seen_between(
+        session,
+        datetime(2026, 6, 1, tzinfo=UTC),
+        datetime(2026, 6, 30, tzinfo=UTC),
+        role="Data Engineer",
+    )
 
     assert [job.canonical_url for job in result] == ["https://example.com/1"]

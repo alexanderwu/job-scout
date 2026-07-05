@@ -63,6 +63,13 @@ class RawPosting(BaseModel):
     posted_at: datetime | None = None
     """When the source says the job was published, if it says at all."""
 
+    salary_min: int | None = None
+    salary_max: int | None = None
+    salary_currency: str | None = None
+    """Comp figures if the source reports them (PLAN.md Phase 5). Each is
+    independently optional — a source may give only a floor, only a
+    ceiling, or nothing at all."""
+
     fetched_at: datetime
     """When *we* retrieved it — drives first_seen/last_seen in Phase 1."""
 

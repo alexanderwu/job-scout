@@ -1,3 +1,38 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Chart palette (PLAN.md Phase 5 insights) — validated categorical set,
+   fixed slot order per the CVD-safety derivation, swapped per color
+   scheme via media query rather than an automatic light->dark flip. */
+:root {
+  --chart-surface: #fcfcfb;
+  --chart-grid: #e1e0d9;
+  --chart-axis: #c3c2b7;
+  --chart-muted: #898781;
+  --chart-series-1: #2a78d6;
+  --chart-series-2: #1baf7a;
+  --chart-series-3: #eda100;
+  --chart-series-4: #008300;
+  --chart-series-5: #4a3aa7;
+  --chart-series-6: #e34948;
+  --chart-series-7: #e87ba4;
+  --chart-series-8: #eb6834;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --chart-surface: #1a1a19;
+    --chart-grid: #2c2c2a;
+    --chart-axis: #383835;
+    --chart-muted: #898781;
+    --chart-series-1: #3987e5;
+    --chart-series-2: #199e70;
+    --chart-series-3: #c98500;
+    --chart-series-4: #008300;
+    --chart-series-5: #9085e9;
+    --chart-series-6: #e66767;
+    --chart-series-7: #d55181;
+    --chart-series-8: #d95926;
+  }
+}

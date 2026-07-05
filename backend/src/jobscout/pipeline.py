@@ -19,6 +19,7 @@ list.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,9 +63,12 @@ async def _ingest_posting(
         existing_posting.url = posting.url
         existing_posting.raw = posting.raw
         existing_posting.fetched_at = posting.fetched_at
-        existing_posting.job.last_seen = max(existing_posting.job.last_seen, posting.fetched_at)
+        existing_posting.job.last_seen = max(
+            _as_utc(existing_posting.job.last_seen), _as_utc(posting.fetched_at)
+        )
         if posting.description is not None:
             existing_posting.job.description = posting.description
+        _apply_salary(existing_posting.job, posting)
         stats.postings_updated += 1
         return
 
@@ -91,15 +95,19 @@ async def _ingest_posting(
             location=posting.location,
             description=posting.description,
             posted_at=posting.posted_at,
+            salary_min=posting.salary_min,
+            salary_max=posting.salary_max,
+            salary_currency=posting.salary_currency,
             first_seen=posting.fetched_at,
             last_seen=posting.fetched_at,
         )
         session.add(job)
         stats.jobs_created += 1
     else:
-        job.last_seen = max(job.last_seen, posting.fetched_at)
+        job.last_seen = max(_as_utc(job.last_seen), _as_utc(posting.fetched_at))
         if posting.description is not None:
             job.description = posting.description
+        _apply_salary(job, posting)
 
     session.add(
         JobPosting(
@@ -111,3 +119,27 @@ async def _ingest_posting(
             raw=posting.raw,
         )
     )
+
+
+def _as_utc(value: datetime) -> datetime:
+    # asyncpg always returns tz-aware timestamps for our timestamptz
+    # columns, but sqlite (test-only, see conftest.py) doesn't reliably
+    # round-trip tzinfo across a re-fetch — a freshly-loaded ``Job`` can
+    # come back with a naive ``last_seen`` and crash the ``max()``
+    # comparison above against an aware ``fetched_at``. A no-op in
+    # production; the same "assume UTC if naive" rule schemas.py already
+    # applies to inbound reminder timestamps.
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+
+
+def _apply_salary(job: Job, posting: RawPosting) -> None:
+    """Refresh a job's comp figures from a re-fetched posting, same
+    "only overwrite what the new posting actually reports" rule as
+    ``description`` above — a later sighting with no salary data
+    shouldn't blank out an earlier one that had it."""
+    if posting.salary_min is not None:
+        job.salary_min = posting.salary_min
+    if posting.salary_max is not None:
+        job.salary_max = posting.salary_max
+    if posting.salary_currency is not None:
+        job.salary_currency = posting.salary_currency

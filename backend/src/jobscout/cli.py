@@ -16,9 +16,16 @@ import httpx
 from jobscout.db import make_engine, make_session_factory
 from jobscout.embed import embed_pending_jobs
 from jobscout.embeddings.local import LocalEmbeddingProvider
+from jobscout.insights import overall_salary_stats, salary_stats_by_group, skill_trends
 from jobscout.matching import extract_keywords, rank_jobs, skill_gap
 from jobscout.pipeline import ingest
-from jobscout.queries import jobs_first_seen_since, jobs_matching_role, jobs_with_embeddings
+from jobscout.queries import (
+    jobs_first_seen_between,
+    jobs_first_seen_since,
+    jobs_matching_role,
+    jobs_with_embeddings,
+    jobs_with_salary,
+)
 from jobscout.resume import read_resume_text
 from jobscout.sources.base import JobSource
 from jobscout.sources.hiring_cafe import HiringCafeSource
@@ -131,6 +138,42 @@ async def _cmd_skill_gap(args: argparse.Namespace) -> None:
         await engine.dispose()
 
 
+async def _cmd_insights(args: argparse.Namespace) -> None:
+    engine = make_engine()
+    try:
+        session_factory = make_session_factory(engine)
+        async with session_factory() as session:
+            salary_jobs = list(
+                await jobs_with_salary(session, role=args.role, location=args.location)
+            )
+            groups = salary_stats_by_group(salary_jobs, group_by=args.group_by, limit=args.top)
+            overall = overall_salary_stats(salary_jobs)
+
+            end = datetime.now(tz=UTC)
+            start = end - timedelta(weeks=args.weeks)
+            trend_jobs = list(await jobs_first_seen_between(session, start, end, role=args.role))
+            trends = skill_trends(trend_jobs, start=start, weeks=args.weeks, top_n=args.top)
+
+        print(f"Salary by {args.group_by} (from {len(salary_jobs)} posting(s) with salary data):")
+        if overall is not None:
+            print(
+                f"  overall: ${overall.min_salary:,}-${overall.max_salary:,} "
+                f"(avg ${overall.avg_salary:,.0f}, n={overall.job_count})"
+            )
+        for group in groups:
+            print(
+                f"  {group.group}: ${group.min_salary:,}-${group.max_salary:,} "
+                f"(avg ${group.avg_salary:,.0f}, n={group.job_count})"
+            )
+
+        print(f"\nSkill trends over the last {args.weeks} week(s) ({len(trend_jobs)} posting(s)):")
+        for trend in trends:
+            counts = ", ".join(str(point.count) for point in trend.points)
+            print(f"  {trend.keyword}: {counts}")
+    finally:
+        await engine.dispose()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="jobscout")
     subcommands = parser.add_subparsers(dest="command", required=True)
@@ -171,6 +214,18 @@ def main() -> None:
     skill_gap_parser.add_argument("--limit", type=int, default=200)
     skill_gap_parser.add_argument("--top", type=int, default=20)
     skill_gap_parser.set_defaults(func=_cmd_skill_gap)
+
+    insights_parser = subcommands.add_parser(
+        "insights", help="Salary and skill-frequency trends from the ingested corpus."
+    )
+    insights_parser.add_argument("--role", default=None, help="Filter by free-text title match.")
+    insights_parser.add_argument("--location", default=None, help="Filter by location.")
+    insights_parser.add_argument(
+        "--group-by", choices=["title", "location"], default="title", dest="group_by"
+    )
+    insights_parser.add_argument("--weeks", type=int, default=12)
+    insights_parser.add_argument("--top", type=int, default=10)
+    insights_parser.set_defaults(func=_cmd_insights)
 
     serve_parser = subcommands.add_parser(
         "serve", help="Run the Phase 3 API (FastAPI, via uvicorn)."

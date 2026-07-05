@@ -8,11 +8,12 @@ from a different table, ``ProfileOut`` never exposes the embedding).
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
+from jobscout.insights import SalaryGroupStat, SkillTrend
 from jobscout.matching import SkillGapResult, TailoringSuggestions
 from jobscout.models import CoverLetter, Job, SavedJob
 
@@ -168,6 +169,73 @@ class TailoringOut(BaseModel):
             matched_keywords=result.matched_keywords,
             missing_keywords=result.missing_keywords,
         )
+
+
+class SalaryGroupOut(BaseModel):
+    group: str
+    job_count: int
+    min_salary: int
+    max_salary: int
+    avg_salary: float
+
+    @classmethod
+    def from_stat(cls, stat: SalaryGroupStat) -> SalaryGroupOut:
+        return cls(
+            group=stat.group,
+            job_count=stat.job_count,
+            min_salary=stat.min_salary,
+            max_salary=stat.max_salary,
+            avg_salary=stat.avg_salary,
+        )
+
+
+class SalaryInsightsOut(BaseModel):
+    group_by: Literal["title", "location"]
+    groups: list[SalaryGroupOut]
+    overall: SalaryGroupOut | None
+
+    @classmethod
+    def from_result(
+        cls,
+        *,
+        group_by: Literal["title", "location"],
+        groups: list[SalaryGroupStat],
+        overall: SalaryGroupStat | None,
+    ) -> SalaryInsightsOut:
+        return cls(
+            group_by=group_by,
+            groups=[SalaryGroupOut.from_stat(group) for group in groups],
+            overall=SalaryGroupOut.from_stat(overall) if overall is not None else None,
+        )
+
+
+class SkillTrendPointOut(BaseModel):
+    week_start: date
+    count: int
+
+
+class SkillTrendOut(BaseModel):
+    keyword: str
+    points: list[SkillTrendPointOut]
+
+    @classmethod
+    def from_trend(cls, trend: SkillTrend) -> SkillTrendOut:
+        return cls(
+            keyword=trend.keyword,
+            points=[
+                SkillTrendPointOut(week_start=point.week_start, count=point.count)
+                for point in trend.points
+            ],
+        )
+
+
+class SkillTrendsOut(BaseModel):
+    weeks: int
+    trends: list[SkillTrendOut]
+
+    @classmethod
+    def from_result(cls, *, weeks: int, trends: list[SkillTrend]) -> SkillTrendsOut:
+        return cls(weeks=weeks, trends=[SkillTrendOut.from_trend(trend) for trend in trends])
 
 
 class CoverLetterOut(BaseModel):

@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -60,6 +60,37 @@ async def jobs_matching_role(
         .order_by(Job.first_seen.desc())
         .limit(limit)
     )
+    return result.all()
+
+
+async def jobs_with_salary(
+    session: AsyncSession, *, role: str | None = None, location: str | None = None
+) -> Sequence[Job]:
+    """Jobs with at least one salary bound reported — the corpus Phase 5
+    salary insights (``insights.salary_stats_by_group``) aggregate over.
+    Optionally narrowed to a free-text role/location, same ``ilike``
+    substring match every other filter in this module uses."""
+    query = select(Job).where(or_(Job.salary_min.is_not(None), Job.salary_max.is_not(None)))
+    if role is not None:
+        query = query.where(Job.title.ilike(f"%{role}%"))
+    if location is not None:
+        query = query.where(Job.location.ilike(f"%{location}%"))
+    result = await session.scalars(query)
+    return result.all()
+
+
+async def jobs_first_seen_between(
+    session: AsyncSession, start: datetime, end: datetime, *, role: str | None = None
+) -> Sequence[Job]:
+    """Jobs first seen in ``[start, end)`` with description text — the
+    corpus Phase 5 skill-frequency trends (``insights.skill_trends``)
+    bucket by week."""
+    query = select(Job).where(
+        Job.first_seen >= start, Job.first_seen < end, Job.description.is_not(None)
+    )
+    if role is not None:
+        query = query.where(Job.title.ilike(f"%{role}%"))
+    result = await session.scalars(query.order_by(Job.first_seen.asc()))
     return result.all()
 
 
