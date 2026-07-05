@@ -1,6 +1,7 @@
-"""The ``jobscout`` CLI: ingestion (Phase 1) plus embedding and resume
-matching (Phase 2) — the daily-driver interface PLAN.md's Phase 2
-milestone calls for, no frontend required.
+"""The ``jobscout`` CLI: ingestion (Phase 1), embedding and resume
+matching (Phase 2), plus skill-gap analysis (Phase 4) — the
+daily-driver interface PLAN.md's Phase 2 milestone calls for, no
+frontend required.
 """
 
 from __future__ import annotations
@@ -15,9 +16,9 @@ import httpx
 from jobscout.db import make_engine, make_session_factory
 from jobscout.embed import embed_pending_jobs
 from jobscout.embeddings.local import LocalEmbeddingProvider
-from jobscout.matching import extract_keywords, rank_jobs
+from jobscout.matching import extract_keywords, rank_jobs, skill_gap
 from jobscout.pipeline import ingest
-from jobscout.queries import jobs_first_seen_since, jobs_with_embeddings
+from jobscout.queries import jobs_first_seen_since, jobs_matching_role, jobs_with_embeddings
 from jobscout.resume import read_resume_text
 from jobscout.sources.base import JobSource
 from jobscout.sources.hiring_cafe import HiringCafeSource
@@ -108,6 +109,28 @@ async def _cmd_match(args: argparse.Namespace) -> None:
         await engine.dispose()
 
 
+async def _cmd_skill_gap(args: argparse.Namespace) -> None:
+    engine = make_engine()
+    try:
+        resume_text = read_resume_text(Path(args.resume))
+        resume_keywords = extract_keywords(resume_text)
+
+        session_factory = make_session_factory(engine)
+        async with session_factory() as session:
+            jobs = await jobs_matching_role(session, args.role, limit=args.limit)
+            result = skill_gap(resume_keywords, list(jobs), top_n=args.top)
+
+        print(f"{result.postings_considered} posting(s) matched role '{args.role}'")
+        print("Missing (in postings, not in resume):")
+        for keyword, count in result.missing_keywords:
+            print(f"  {keyword} ({count} posting(s))")
+        print("Already covered:")
+        for keyword, count in result.matched_keywords:
+            print(f"  {keyword} ({count} posting(s))")
+    finally:
+        await engine.dispose()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="jobscout")
     subcommands = parser.add_subparsers(dest="command", required=True)
@@ -137,6 +160,17 @@ def main() -> None:
     match_parser.add_argument("--location", default=None, help="Filter jobs by location.")
     match_parser.add_argument("--limit", type=int, default=10)
     match_parser.set_defaults(func=_cmd_match)
+
+    skill_gap_parser = subcommands.add_parser(
+        "skill-gap", help="Diff a resume against a target role's aggregate posting keywords."
+    )
+    skill_gap_parser.add_argument("resume", help="Path to a resume (.pdf, .txt, or .md).")
+    skill_gap_parser.add_argument(
+        "--role", required=True, help="Target role (free-text title match)."
+    )
+    skill_gap_parser.add_argument("--limit", type=int, default=200)
+    skill_gap_parser.add_argument("--top", type=int, default=20)
+    skill_gap_parser.set_defaults(func=_cmd_skill_gap)
 
     serve_parser = subcommands.add_parser(
         "serve", help="Run the Phase 3 API (FastAPI, via uvicorn)."

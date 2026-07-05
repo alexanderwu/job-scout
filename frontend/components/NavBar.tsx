@@ -19,6 +19,12 @@ export function NavBar() {
         >
           Saved
         </Link>
+        <Link
+          href="/skill-gap"
+          className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
+        >
+          Skill Gap
+        </Link>
       </nav>
     </header>
   );

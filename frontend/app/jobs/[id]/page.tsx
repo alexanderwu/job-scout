@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
+import { CoverLetterPanel } from "@/components/CoverLetterPanel";
 import { StatusControl } from "@/components/StatusControl";
-import { ApiError, getJob } from "@/lib/api";
+import { ApiError, getCoverLetter, getJob, getTailoring } from "@/lib/api";
 
 export default async function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -19,6 +20,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       </p>
     );
   }
+
+  const tailoring = await getTailoring(jobId).catch(() => null);
+  const coverLetter = await getCoverLetter(jobId).catch(() => null);
 
   return (
     <article className="space-y-4">
@@ -45,6 +49,24 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       <div className="whitespace-pre-wrap text-sm leading-relaxed">
         {job.description ?? "No description available."}
       </div>
+
+      {tailoring && (tailoring.matched_keywords.length > 0 || tailoring.missing_keywords.length > 0) && (
+        <section className="space-y-2">
+          <h2 className="font-medium">Tailoring Suggestions</h2>
+          {tailoring.missing_keywords.length > 0 && (
+            <p className="text-sm text-neutral-500">
+              Consider adding: {tailoring.missing_keywords.join(", ")}
+            </p>
+          )}
+          {tailoring.matched_keywords.length > 0 && (
+            <p className="text-sm text-neutral-500">
+              Already emphasized: {tailoring.matched_keywords.join(", ")}
+            </p>
+          )}
+        </section>
+      )}
+
+      <CoverLetterPanel jobId={job.id} initialCoverLetter={coverLetter} />
     </article>
   );
 }

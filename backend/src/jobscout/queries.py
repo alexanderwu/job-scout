@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from jobscout.models import Job, Profile, SavedJob
+from jobscout.models import STATUS_TIMESTAMP_COLUMNS, CoverLetter, Job, Profile, SavedJob
 
 
 async def jobs_first_seen_since(session: AsyncSession, since: datetime) -> Sequence[Job]:
@@ -43,6 +43,23 @@ async def jobs_with_embeddings(
     if location is not None:
         query = query.where(Job.location.ilike(f"%{location}%"))
     result = await session.scalars(query)
+    return result.all()
+
+
+async def jobs_matching_role(
+    session: AsyncSession, role: str, *, limit: int = 200
+) -> Sequence[Job]:
+    """Postings for a free-text target-role search — the corpus a Phase 4
+    skill-gap analysis aggregates over. Matched by substring against
+    ``Job.title`` (same ``ilike`` approach ``search_jobs``' location filter
+    uses; there's no roles taxonomy to match against instead), restricted
+    to postings with description text to extract keywords from."""
+    result = await session.scalars(
+        select(Job)
+        .where(Job.title.ilike(f"%{role}%"), Job.description.is_not(None))
+        .order_by(Job.first_seen.desc())
+        .limit(limit)
+    )
     return result.all()
 
 
@@ -103,7 +120,9 @@ async def upsert_saved_job_status(
 ) -> SavedJob:
     """Track ``job_id`` with ``status``, creating the tracking row on
     first save and just updating status/timestamp on later status
-    changes (e.g. saved -> applied)."""
+    changes (e.g. saved -> applied). Also stamps the matching
+    ``STATUS_TIMESTAMP_COLUMNS`` timestamp so the UI can render a
+    timeline of transitions, not just the current status."""
     saved = await get_saved_job(session, job_id)
     if saved is None:
         saved = SavedJob(job_id=job_id, status=status, created_at=now, updated_at=now)
@@ -111,8 +130,41 @@ async def upsert_saved_job_status(
     else:
         saved.status = status
         saved.updated_at = now
+    timestamp_column = STATUS_TIMESTAMP_COLUMNS.get(status)
+    if timestamp_column is not None:
+        setattr(saved, timestamp_column, now)
     await session.flush()
     return saved
+
+
+async def upsert_saved_job_tracking(
+    session: AsyncSession,
+    job_id: int,
+    *,
+    reminder_at: datetime | None,
+    notes: str | None,
+) -> SavedJob | None:
+    """Replace the reminder/notes fields on an already-tracked job.
+    Returns ``None`` if ``job_id`` isn't tracked yet (caller 404s)."""
+    saved = await get_saved_job(session, job_id)
+    if saved is None:
+        return None
+    saved.reminder_at = reminder_at
+    saved.notes = notes
+    await session.flush()
+    return saved
+
+
+async def list_due_reminders(session: AsyncSession, *, before: datetime) -> Sequence[SavedJob]:
+    """Tracked jobs with a reminder set at or before ``before``, soonest
+    first — the "upcoming/due reminders" list Phase 4 surfaces."""
+    result = await session.scalars(
+        select(SavedJob)
+        .options(selectinload(SavedJob.job))
+        .where(SavedJob.reminder_at.is_not(None), SavedJob.reminder_at <= before)
+        .order_by(SavedJob.reminder_at.asc())
+    )
+    return result.all()
 
 
 async def delete_saved_job(session: AsyncSession, job_id: int) -> bool:
@@ -123,3 +175,28 @@ async def delete_saved_job(session: AsyncSession, job_id: int) -> bool:
     await session.delete(saved)
     await session.flush()
     return True
+
+
+async def get_cover_letter(session: AsyncSession, job_id: int) -> CoverLetter | None:
+    cover: CoverLetter | None = await session.scalar(
+        select(CoverLetter).where(CoverLetter.job_id == job_id)
+    )
+    return cover
+
+
+async def upsert_cover_letter(
+    session: AsyncSession, *, job_id: int, content: str, now: datetime
+) -> CoverLetter:
+    """Persist a job's cover-letter draft, creating it on first
+    generation and overwriting ``content`` in place on regenerate
+    (``created_at`` stays fixed, ``updated_at`` advances) — the same
+    upsert shape as ``upsert_profile``."""
+    cover = await get_cover_letter(session, job_id)
+    if cover is None:
+        cover = CoverLetter(job_id=job_id, content=content, created_at=now, updated_at=now)
+        session.add(cover)
+    else:
+        cover.content = content
+        cover.updated_at = now
+    await session.flush()
+    return cover

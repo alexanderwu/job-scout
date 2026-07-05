@@ -13,7 +13,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from jobscout.models import Job, SavedJob
+from jobscout.matching import SkillGapResult, TailoringSuggestions
+from jobscout.models import CoverLetter, Job, SavedJob
 
 SavedJobStatus = Literal["saved", "applied", "interviewing", "rejected", "offer"]
 
@@ -87,6 +88,12 @@ class SavedJobOut(BaseModel):
     status: SavedJobStatus
     created_at: datetime
     updated_at: datetime
+    applied_at: datetime | None
+    interviewing_at: datetime | None
+    rejected_at: datetime | None
+    offer_at: datetime | None
+    reminder_at: datetime | None
+    notes: str | None
 
     @classmethod
     def from_saved_job(cls, saved: SavedJob) -> SavedJobOut:
@@ -95,8 +102,74 @@ class SavedJobOut(BaseModel):
             status=saved.status,  # type: ignore[arg-type]
             created_at=saved.created_at,
             updated_at=saved.updated_at,
+            applied_at=saved.applied_at,
+            interviewing_at=saved.interviewing_at,
+            rejected_at=saved.rejected_at,
+            offer_at=saved.offer_at,
+            reminder_at=saved.reminder_at,
+            notes=saved.notes,
         )
 
 
 class SaveJobStatusIn(BaseModel):
     status: SavedJobStatus
+
+
+class SavedJobTrackingIn(BaseModel):
+    reminder_at: datetime | None = None
+    notes: str | None = None
+
+
+class KeywordFrequency(BaseModel):
+    keyword: str
+    count: int
+
+
+class SkillGapOut(BaseModel):
+    role: str
+    postings_considered: int
+    missing_keywords: list[KeywordFrequency]
+    matched_keywords: list[KeywordFrequency]
+
+    @classmethod
+    def from_result(cls, role: str, result: SkillGapResult) -> SkillGapOut:
+        return cls(
+            role=role,
+            postings_considered=result.postings_considered,
+            missing_keywords=[
+                KeywordFrequency(keyword=k, count=c) for k, c in result.missing_keywords
+            ],
+            matched_keywords=[
+                KeywordFrequency(keyword=k, count=c) for k, c in result.matched_keywords
+            ],
+        )
+
+
+class TailoringOut(BaseModel):
+    job_id: int
+    matched_keywords: list[str]
+    missing_keywords: list[str]
+
+    @classmethod
+    def from_result(cls, job_id: int, result: TailoringSuggestions) -> TailoringOut:
+        return cls(
+            job_id=job_id,
+            matched_keywords=result.matched_keywords,
+            missing_keywords=result.missing_keywords,
+        )
+
+
+class CoverLetterOut(BaseModel):
+    job_id: int
+    content: str
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_model(cls, cover: CoverLetter) -> CoverLetterOut:
+        return cls(
+            job_id=cover.job_id,
+            content=cover.content,
+            created_at=cover.created_at,
+            updated_at=cover.updated_at,
+        )

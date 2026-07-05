@@ -104,8 +104,9 @@ class Profile(Base):
 
 class SavedJob(Base):
     """Application-tracking status for a job the user has saved (Phase 3
-    "save/apply tracking"). One row per tracked job; untracked jobs simply
-    have no row here."""
+    "save/apply tracking"; Phase 4 adds per-status timestamps and
+    reminders). One row per tracked job; untracked jobs simply have no
+    row here."""
 
     __tablename__ = "saved_jobs"
 
@@ -119,7 +120,46 @@ class SavedJob(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    interviewing_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    offer_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    """Stamped the first time ``status`` transitions into the matching
+    state (see ``STATUS_TIMESTAMP_COLUMNS`` and
+    ``queries.upsert_saved_job_status``), so the UI can render a
+    timeline rather than just the latest status."""
+
+    reminder_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    notes: Mapped[str | None] = mapped_column(Text)
+
     job: Mapped[Job] = relationship()
 
 
 SAVED_JOB_STATUSES = ("saved", "applied", "interviewing", "rejected", "offer")
+
+STATUS_TIMESTAMP_COLUMNS = {
+    "applied": "applied_at",
+    "interviewing": "interviewing_at",
+    "rejected": "rejected_at",
+    "offer": "offer_at",
+}
+"""Maps a status to the ``SavedJob`` column stamped on transition into it
+(``saved`` has no dedicated column — ``created_at`` already covers it)."""
+
+
+class CoverLetter(Base):
+    """A persisted, regenerable cover-letter draft for a job (Phase 4).
+    One row per job — regenerating overwrites ``content`` in place,
+    mirroring ``Profile``'s single-row-per-subject upsert shape."""
+
+    __tablename__ = "cover_letters"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"), unique=True)
+
+    content: Mapped[str] = mapped_column(Text)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    job: Mapped[Job] = relationship()

@@ -8,15 +8,20 @@ from jobscout.embeddings.base import EMBEDDING_DIM
 from jobscout.models import Job
 from jobscout.queries import (
     delete_saved_job,
+    get_cover_letter,
     get_profile,
     get_saved_job,
     jobs_first_seen_since,
+    jobs_matching_role,
     jobs_missing_embeddings,
     jobs_with_embeddings,
+    list_due_reminders,
     list_saved_jobs,
     search_jobs,
+    upsert_cover_letter,
     upsert_profile,
     upsert_saved_job_status,
+    upsert_saved_job_tracking,
 )
 
 
@@ -191,3 +196,122 @@ async def test_saved_job_lifecycle(session: AsyncSession) -> None:
     assert await delete_saved_job(session, job.id) is True
     assert await get_saved_job(session, job.id) is None
     assert await delete_saved_job(session, job.id) is False
+
+
+async def test_upsert_saved_job_status_stamps_transition_timestamps(session: AsyncSession) -> None:
+    job = make_job(canonical_url="https://example.com/1")
+    session.add(job)
+    await session.commit()
+
+    applied = await upsert_saved_job_status(
+        session, job.id, "applied", now=datetime(2026, 1, 2, tzinfo=UTC)
+    )
+    await session.commit()
+    assert applied.applied_at == datetime(2026, 1, 2, tzinfo=UTC)
+    assert applied.interviewing_at is None
+
+    interviewing = await upsert_saved_job_status(
+        session, job.id, "interviewing", now=datetime(2026, 1, 3, tzinfo=UTC)
+    )
+    await session.commit()
+    # The earlier transition's timestamp is untouched by a later one.
+    assert interviewing.applied_at == datetime(2026, 1, 2, tzinfo=UTC)
+    assert interviewing.interviewing_at == datetime(2026, 1, 3, tzinfo=UTC)
+
+
+async def test_upsert_saved_job_tracking_sets_reminder_and_notes(session: AsyncSession) -> None:
+    job = make_job(canonical_url="https://example.com/1")
+    session.add(job)
+    await session.commit()
+
+    assert (
+        await upsert_saved_job_tracking(
+            session, job.id, reminder_at=datetime(2026, 2, 1, tzinfo=UTC), notes="Follow up"
+        )
+        is None
+    )
+
+    await upsert_saved_job_status(session, job.id, "saved", now=datetime(2026, 1, 1, tzinfo=UTC))
+    await session.commit()
+
+    updated = await upsert_saved_job_tracking(
+        session, job.id, reminder_at=datetime(2026, 2, 1, tzinfo=UTC), notes="Follow up"
+    )
+    await session.commit()
+    assert updated is not None
+    assert updated.reminder_at == datetime(2026, 2, 1, tzinfo=UTC)
+    assert updated.notes == "Follow up"
+
+
+async def test_list_due_reminders_filters_and_orders_by_reminder_at(session: AsyncSession) -> None:
+    soon = make_job(canonical_url="https://example.com/soon")
+    later = make_job(canonical_url="https://example.com/later")
+    no_reminder = make_job(canonical_url="https://example.com/none")
+    session.add_all([soon, later, no_reminder])
+    await session.commit()
+
+    for job in (soon, later, no_reminder):
+        await upsert_saved_job_status(
+            session, job.id, "saved", now=datetime(2026, 1, 1, tzinfo=UTC)
+        )
+    await session.commit()
+
+    await upsert_saved_job_tracking(
+        session, later.id, reminder_at=datetime(2026, 3, 1, tzinfo=UTC), notes=None
+    )
+    await upsert_saved_job_tracking(
+        session, soon.id, reminder_at=datetime(2026, 2, 1, tzinfo=UTC), notes=None
+    )
+    await session.commit()
+
+    due = await list_due_reminders(session, before=datetime(2026, 6, 1, tzinfo=UTC))
+    assert [r.job_id for r in due] == [soon.id, later.id]
+
+    only_soon = await list_due_reminders(session, before=datetime(2026, 2, 15, tzinfo=UTC))
+    assert [r.job_id for r in only_soon] == [soon.id]
+
+
+async def test_cover_letter_upsert_creates_then_overwrites_content(session: AsyncSession) -> None:
+    job = make_job(canonical_url="https://example.com/1")
+    session.add(job)
+    await session.commit()
+
+    assert await get_cover_letter(session, job.id) is None
+
+    created = await upsert_cover_letter(
+        session, job_id=job.id, content="Draft one.", now=datetime(2026, 1, 1, tzinfo=UTC)
+    )
+    await session.commit()
+    assert created.content == "Draft one."
+
+    updated = await upsert_cover_letter(
+        session, job_id=job.id, content="Draft two.", now=datetime(2026, 1, 2, tzinfo=UTC)
+    )
+    await session.commit()
+
+    assert updated.id == created.id
+    assert updated.content == "Draft two."
+    assert updated.created_at == datetime(2026, 1, 1, tzinfo=UTC)
+    assert updated.updated_at == datetime(2026, 1, 2, tzinfo=UTC)
+
+
+async def test_jobs_matching_role_filters_by_title_substring_case_insensitively(
+    session: AsyncSession,
+) -> None:
+    engineer = make_job(
+        canonical_url="https://example.com/1",
+        title="Senior Data Engineer",
+        description="Build pipelines.",
+    )
+    manager = make_job(
+        canonical_url="https://example.com/2", title="Product Manager", description="Ship things."
+    )
+    no_description = make_job(
+        canonical_url="https://example.com/3", title="Data Engineer II", description=None
+    )
+    session.add_all([engineer, manager, no_description])
+    await session.commit()
+
+    result = await jobs_matching_role(session, "data engineer")
+
+    assert [job.canonical_url for job in result] == ["https://example.com/1"]

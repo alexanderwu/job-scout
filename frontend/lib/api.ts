@@ -82,6 +82,37 @@ export interface SavedJob {
   status: SavedStatus;
   created_at: string;
   updated_at: string;
+  applied_at: string | null;
+  interviewing_at: string | null;
+  rejected_at: string | null;
+  offer_at: string | null;
+  reminder_at: string | null;
+  notes: string | null;
+}
+
+export interface KeywordFrequency {
+  keyword: string;
+  count: number;
+}
+
+export interface SkillGapResult {
+  role: string;
+  postings_considered: number;
+  missing_keywords: KeywordFrequency[];
+  matched_keywords: KeywordFrequency[];
+}
+
+export interface TailoringSuggestions {
+  job_id: number;
+  matched_keywords: string[];
+  missing_keywords: string[];
+}
+
+export interface CoverLetter {
+  job_id: number;
+  content: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export function getJobs(params?: { location?: string; limit?: number; offset?: number }) {
@@ -143,4 +174,41 @@ export function updateSavedStatus(jobId: number, status: SavedStatus) {
 
 export function unsaveJob(jobId: number) {
   return apiFetch<void>(`/api/jobs/${jobId}/save`, { method: "DELETE" });
+}
+
+export function updateSavedJobTracking(
+  jobId: number,
+  body: { reminder_at: string | null; notes: string | null },
+) {
+  return apiFetch<SavedJob>(`/api/jobs/${jobId}/tracking`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function getReminders(withinHours?: number) {
+  const query = new URLSearchParams();
+  if (withinHours != null) query.set("within_hours", String(withinHours));
+  const qs = query.toString();
+  return apiFetch<SavedJob[]>(`/api/reminders${qs ? `?${qs}` : ""}`);
+}
+
+export function getSkillGap(role: string, params?: { limit?: number; top?: number }) {
+  const query = new URLSearchParams({ role });
+  if (params?.limit != null) query.set("limit", String(params.limit));
+  if (params?.top != null) query.set("top", String(params.top));
+  return apiFetch<SkillGapResult>(`/api/skill-gap?${query.toString()}`);
+}
+
+export function getTailoring(jobId: number) {
+  return apiFetch<TailoringSuggestions>(`/api/jobs/${jobId}/tailoring`);
+}
+
+export function getCoverLetter(jobId: number) {
+  return apiFetch<CoverLetter>(`/api/jobs/${jobId}/cover-letter`);
+}
+
+export function generateCoverLetter(jobId: number) {
+  return apiFetch<CoverLetter>(`/api/jobs/${jobId}/cover-letter`, { method: "POST" });
 }
