@@ -28,16 +28,21 @@ The goal isn't just a bigger list of jobs. It's a smaller, smarter one — with 
 
 Long-term, Job Scout is meant to be a career co-pilot, not just a job board: a single place to discover roles, understand where you're competitive, prepare tailored applications, and track the whole process — all grounded in real, current market data rather than generic advice.
 
+## How it's built
+
+A few principles guide every technical decision (the full reasoning is in `PLAN.md`):
+
+- **Tool first, portfolio second.** Job Scout is built to be used daily in a real job search — the matching core ships with a CLI long before there's a web frontend, and only features that prove useful get polished for show.
+- **Source-agnostic ingestion.** Job postings come in through a common adapter interface, so no single job board or API is a point of failure — new sources are a new adapter, not a pipeline rewrite.
+- **Local-first ML, swappable providers.** Embeddings and text generation run on free local models by default (your resume never has to leave your machine), with a provider interface that lets a paid API be swapped in per-feature where output quality matters most.
+
 ## Current status
 
-Job Scout is an active, in-progress project. As of now:
+Job Scout is at the foundations stage: the roadmap and tech stack are settled (see `PLAN.md`), and implementation is starting with the ingestion pipeline. The features described above are the target design — this README describes where the project is headed, and the status here will track what's actually built.
 
-- The data pipeline that continuously collects and organizes job postings is up and running.
-- The matching engine that ranks jobs against a candidate profile is in development.
-- Career-copilot features (skill-gap analysis, resume tailoring, cover letter drafting) and the application tracker are planned next.
-- Market insights (salary and skill trend dashboards) are a later-stage addition.
-
-See `PLAN.md` for the full roadmap and the reasoning behind each technical decision.
+- **Next up:** project scaffolding and the data pipeline that collects and organizes job postings (Phases 0–1).
+- **Then:** the matching engine that ranks jobs against a candidate profile, with a CLI to use it daily (Phase 2 — the real MVP).
+- **Later:** web frontend, career-copilot features (skill-gap analysis, resume tailoring, cover letters), application tracker, and market-insight dashboards.
 
 ## About this project
 
