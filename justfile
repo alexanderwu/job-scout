@@ -29,6 +29,11 @@ down:
 reset:
     docker compose down --volumes
 
+# Apply database migrations (needs DATABASE_URL set, e.g. from backend/.env).
+[working-directory('backend')]
+migrate:
+    uv run alembic upgrade head
+
 # Run the test suite.
 [working-directory('backend')]
 test *args:

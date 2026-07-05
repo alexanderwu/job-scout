@@ -41,8 +41,8 @@ A few principles guide every technical decision (the full reasoning is in `PLAN.
 Job Scout is at the foundations stage: the roadmap and tech stack are settled (see `PLAN.md`), and implementation is starting with the ingestion pipeline. The features described above are the target design — this README describes where the project is headed, and the status here will track what's actually built.
 
 - **Done (Phase 0):** project scaffold (`uv`/`ruff`/`mypy`/`pytest`, CI), local Postgres+pgvector and Redis via Docker Compose, the `JobSource` adapter interface, and a first hiring.cafe adapter (tested against fixtures; live API shape still needs manual confirmation).
-- **Next up:** the ingestion pipeline that collects, normalizes, and de-duplicates job postings (Phase 1).
-- **Then:** the matching engine that ranks jobs against a candidate profile, with a CLI to use it daily (Phase 2 — the real MVP).
+- **Done (Phase 1):** the ingestion pipeline — normalized `jobs`/`job_postings` schema (Alembic migrations), tiered dedupe (exact source+ID, canonical URL, normalized title+company), and a `jobscout` CLI (`jobscout ingest`, `jobscout recent`) to run ingestion on demand and query what's new.
+- **Next up:** the matching engine that ranks jobs against a candidate profile, with a CLI to use it daily (Phase 2 — the real MVP).
 - **Later:** web frontend, career-copilot features (skill-gap analysis, resume tailoring, cover letters), application tracker, and market-insight dashboards.
 
 ## Getting started
@@ -84,6 +84,7 @@ With `just` (run `just` alone to list them all):
 | `just install` | Sync the virtualenv with `pyproject.toml` / `uv.lock` |
 | `just up` / `just down` | Start / stop local Postgres + Redis |
 | `just reset` | Stop services **and** wipe their data volumes |
+| `just migrate` | Apply database migrations (`DATABASE_URL` must be set) |
 | `just test` | Run the test suite (`just test -k throttle` passes args through) |
 | `just fmt` | Format code |
 | `just lint` | Lint, auto-fixing what's safe |
