@@ -21,6 +21,7 @@ export default function RootLayout({
             <Link href="/">Profiles</Link>
             <Link href="/jobs">Jobs</Link>
             <Link href="/skill-gap">Skill gap</Link>
+            <Link href="/insights">Insights</Link>
             <Link href="/tracker">Tracker</Link>
           </nav>
         </header>

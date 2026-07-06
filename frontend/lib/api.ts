@@ -224,3 +224,39 @@ export const copilot = {
   reminders: (days = 7) =>
     request<Application[]>(`/applications/reminders?days=${days}`),
 };
+
+// --- Phase 5: insights -------------------------------------------------------
+
+export interface SalaryStats {
+  count: number;
+  p25: number | null;
+  median: number | null;
+  p75: number | null;
+}
+
+export interface SalaryReport {
+  role: string | null;
+  overall: SalaryStats;
+  by_location: { location: string; stats: SalaryStats }[];
+}
+
+export interface SkillTrendReport {
+  weeks: number;
+  sampled_jobs: number;
+  skills: { skill: string; total: number; weekly: { week_start: string; count: number }[] }[];
+}
+
+export const insights = {
+  salary: (params: { role?: string; location?: string } = {}) => {
+    const search = new URLSearchParams();
+    if (params.role) search.set("role", params.role);
+    if (params.location) search.set("location", params.location);
+    return request<SalaryReport>(`/insights/salary?${search}`);
+  },
+  skills: (params: { weeks?: number; role?: string } = {}) => {
+    const search = new URLSearchParams();
+    if (params.weeks) search.set("weeks", String(params.weeks));
+    if (params.role) search.set("role", params.role);
+    return request<SkillTrendReport>(`/insights/skills?${search}`);
+  },
+};

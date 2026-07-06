@@ -189,3 +189,19 @@ async def test_copilot_endpoints(client: httpx.AsyncClient, db_session: AsyncSes
     # a fresh application isn't stale; the reminder list starts empty
     await client.post("/applications", json={"job_id": job_id})
     assert (await client.get("/applications/reminders")).json() == []
+
+
+async def test_insights_endpoints(client: httpx.AsyncClient, db_session: AsyncSession) -> None:
+    await seed_jobs(db_session)  # the DE posting carries $170k-$210k in its text
+
+    salary = (await client.get("/insights/salary")).json()
+    assert salary["overall"]["count"] == 1
+    assert salary["overall"]["median"] == 190_000
+    assert salary["by_location"][0]["location"] == "Remote"
+
+    skills = (await client.get("/insights/skills", params={"weeks": 4})).json()
+    assert skills["sampled_jobs"] == 2
+    names = [t["skill"] for t in skills["skills"]]
+    assert "Python" in names
+    trend = skills["skills"][0]
+    assert len(trend["weekly"]) == 4

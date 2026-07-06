@@ -45,7 +45,8 @@ Job Scout is at the foundations stage: the roadmap and tech stack are settled (s
 - **Done (Phase 2 — the real MVP):** the matching engine. Jobs are embedded locally (sentence-transformers behind a swappable `EmbeddingProvider`; a dependency-free hashing baseline ships too) into pgvector, and `jobscout match resume.pdf` returns ranked matches with skill-overlap reasoning and location/remote/salary/freshness filters.
 - **Done (Phase 3):** the web app. FastAPI backend (profiles, matches, feed, job browsing, application tracking — OpenAPI docs at `/docs`) and a Next.js frontend: upload a resume, browse ranked matches with skill chips, view job details across sources, save jobs into a pipeline tracker, with a polling "new jobs for your profile" banner.
 - **Done (Phase 4):** career-copilot features. Skill-gap analysis against your own ingested corpus ("what do Data Engineer postings demand that my resume lacks?"), per-job resume-tailoring suggestions, cover-letter drafting (honest templates by default; optional local Ollama or Anthropic API for prose via the `LLMProvider` interface), and follow-up reminders in the application tracker.
-- **Later:** market-insight dashboards (salary and skill trends).
+- **Done (Phase 5):** market insights. Salary percentiles (overall and by location, computed in Postgres with `percentile_cont`) and week-by-week skill-demand trends from your own ingested corpus, with sample sizes shown so the numbers stay honest. `/insights` in the web app.
+- **Next up:** demo polish — realistic seeded history and a lightweight ops view (Phase 6).
 
 ## Getting started
 
