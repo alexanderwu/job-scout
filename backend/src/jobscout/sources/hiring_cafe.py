@@ -19,6 +19,7 @@ from typing import Any
 
 import httpx
 
+from jobscout.normalize import html_to_text
 from jobscout.sources.base import JobSource, RawPosting
 from jobscout.sources.throttle import RateLimiter
 
@@ -84,6 +85,7 @@ class HiringCafeSource(JobSource):
         # a schema surprise worth failing loudly on (pydantic raises).
         info = item.get("job_information") or {}
         processed = item.get("v5_processed_job_data") or {}
+        description = info.get("description")
         return RawPosting(
             source=self.name,
             external_id=str(item.get("id", "")),
@@ -93,6 +95,13 @@ class HiringCafeSource(JobSource):
             location=processed.get("formatted_workplace_location"),
             posted_at=_parse_datetime(processed.get("estimated_publish_date")),
             fetched_at=fetched_at,
+            description=html_to_text(description) if description else None,
+            salary_min=_to_int(processed.get("yearly_min_compensation")),
+            salary_max=_to_int(processed.get("yearly_max_compensation")),
+            salary_currency=processed.get("listed_compensation_currency"),
+            remote=processed.get("workplace_type") == "Remote"
+            if processed.get("workplace_type")
+            else None,
             raw=item,
         )
 
@@ -104,3 +113,15 @@ def _parse_datetime(value: str | None) -> datetime | None:
         return datetime.fromisoformat(value)
     except ValueError:
         return None
+
+
+def _to_int(value: object) -> int | None:
+    """Comp fields arrive as int, float, or numeric string — or garbage."""
+    if isinstance(value, int | float):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(float(value))
+        except ValueError:
+            return None
+    return None

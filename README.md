@@ -41,8 +41,8 @@ A few principles guide every technical decision (the full reasoning is in `PLAN.
 Job Scout is at the foundations stage: the roadmap and tech stack are settled (see `PLAN.md`), and implementation is starting with the ingestion pipeline. The features described above are the target design — this README describes where the project is headed, and the status here will track what's actually built.
 
 - **Done (Phase 0):** project scaffold (`uv`/`ruff`/`mypy`/`pytest`, CI), local Postgres+pgvector and Redis via Docker Compose, the `JobSource` adapter interface, and a first hiring.cafe adapter (tested against fixtures; live API shape still needs manual confirmation).
-- **Next up:** the ingestion pipeline that collects, normalizes, and de-duplicates job postings (Phase 1).
-- **Then:** the matching engine that ranks jobs against a candidate profile, with a CLI to use it daily (Phase 2 — the real MVP).
+- **Done (Phase 1):** the ingestion pipeline — official Greenhouse and Lever adapters, normalization, tiered cross-source dedupe into `jobs`/`postings` tables (Alembic-migrated Postgres), a `jobscout ingest`/`jobscout recent` CLI, and scheduled background runs via RQ + `rq cron`.
+- **Next up:** the matching engine that ranks jobs against a candidate profile, with a CLI to use it daily (Phase 2 — the real MVP).
 - **Later:** web frontend, career-copilot features (skill-gap analysis, resume tailoring, cover letters), application tracker, and market-insight dashboards.
 
 ## Getting started

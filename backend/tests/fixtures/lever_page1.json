@@ -1,0 +1,43 @@
+[
+  {
+    "id": "a8bc6a04-5f6a-4e0e-8b90-1f9f3f1c2d3e",
+    "text": "Machine Learning Engineer",
+    "categories": {
+      "team": "AI",
+      "location": "New York, NY",
+      "commitment": "Full-time"
+    },
+    "country": "US",
+    "workplaceType": "hybrid",
+    "description": "<div>Join our ML team.</div>",
+    "descriptionPlain": "Join our ML team.",
+    "lists": [
+      {
+        "text": "Requirements",
+        "content": "<li>Strong Python</li><li>Experience with PyTorch or JAX</li>"
+      }
+    ],
+    "additional": "<p>We offer equity.</p>",
+    "additionalPlain": "We offer equity.",
+    "hostedUrl": "https://jobs.lever.co/globex/a8bc6a04-5f6a-4e0e-8b90-1f9f3f1c2d3e",
+    "applyUrl": "https://jobs.lever.co/globex/a8bc6a04-5f6a-4e0e-8b90-1f9f3f1c2d3e/apply",
+    "createdAt": 1782475200000
+  },
+  {
+    "id": "b9cd7b15-6a7b-5f1f-9ca1-2a0a4a2d3e4f",
+    "text": "Site Reliability Engineer",
+    "categories": {
+      "team": "Infrastructure",
+      "location": "Remote",
+      "commitment": "Full-time"
+    },
+    "country": "US",
+    "workplaceType": "remote",
+    "description": "<div>Keep the lights on.</div>",
+    "descriptionPlain": "Keep the lights on.",
+    "lists": [],
+    "hostedUrl": "https://jobs.lever.co/globex/b9cd7b15-6a7b-5f1f-9ca1-2a0a4a2d3e4f",
+    "applyUrl": "https://jobs.lever.co/globex/b9cd7b15-6a7b-5f1f-9ca1-2a0a4a2d3e4f/apply",
+    "createdAt": 1782561600000
+  }
+]

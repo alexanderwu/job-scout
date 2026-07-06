@@ -29,6 +29,31 @@ down:
 reset:
     docker compose down --volumes
 
+# Apply any pending database migrations (needs `just up` first).
+[working-directory('backend')]
+migrate:
+    uv run alembic upgrade head
+
+# Create a new migration from model changes; review before committing!
+[working-directory('backend')]
+makemigration message:
+    uv run alembic revision --autogenerate -m "{{ message }}"
+
+# Run ingestion once, in the foreground.
+[working-directory('backend')]
+ingest:
+    uv run jobscout ingest
+
+# Start the background job worker (processes queued ingestion runs).
+[working-directory('backend')]
+worker:
+    uv run rq worker ingest --url "${REDIS_URL:-redis://localhost:6379/0}"
+
+# Start the cron scheduler (enqueues ingestion every INGEST_INTERVAL_MINUTES).
+[working-directory('backend')]
+cron:
+    uv run rq cron jobscout.schedules --url "${REDIS_URL:-redis://localhost:6379/0}"
+
 # Run the test suite.
 [working-directory('backend')]
 test *args:

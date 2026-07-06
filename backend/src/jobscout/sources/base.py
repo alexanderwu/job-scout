@@ -58,6 +58,25 @@ class RawPosting(BaseModel):
     posted_at: datetime | None = None
     """When the source says the job was published, if it says at all."""
 
+    # Phase 1 widened the contract with the fields below. RawPosting
+    # stays "thin" in spirit — these are *extracted*, not normalized —
+    # but extraction is inherently per-source (only the adapter knows
+    # where its payload keeps a description or comp figures), so it
+    # belongs here rather than in a central normalizer that would need
+    # an if-ladder per source.
+
+    description: str | None = None
+    """Plain-text job description (adapters strip source HTML)."""
+
+    salary_min: int | None = None
+    salary_max: int | None = None
+    salary_currency: str | None = None
+    """Structured annual comp, only when the source reports it as data.
+    Free-text salary parsing is the pipeline's job (normalize.py)."""
+
+    remote: bool | None = None
+    """Explicit remote flag from the source; None means it didn't say."""
+
     fetched_at: datetime
     """When *we* retrieved it — drives first_seen/last_seen in Phase 1."""
 
