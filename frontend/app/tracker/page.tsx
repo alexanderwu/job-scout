@@ -11,15 +11,19 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { api, Application, APPLICATION_STATUSES } from "@/lib/api";
+import { api, copilot, Application, APPLICATION_STATUSES } from "@/lib/api";
+
+const REMINDER_DAYS = 7;
 
 export default function TrackerPage() {
   const [apps, setApps] = useState<Application[]>([]);
+  const [stale, setStale] = useState<Application[]>([]);
   const [tab, setTab] = useState<string>("all");
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     api.listApplications().then(setApps).catch((e) => setError(String(e)));
+    copilot.reminders(REMINDER_DAYS).then(setStale).catch(() => {});
   }, []);
 
   useEffect(load, [load]);
@@ -45,10 +49,23 @@ export default function TrackerPage() {
 
   const shown = tab === "all" ? apps : apps.filter((a) => a.status === tab);
   const count = (s: string) => apps.filter((a) => a.status === s).length;
+  const idleDays = (a: Application) =>
+    Math.floor((Date.now() - new Date(a.updated_at).getTime()) / 86_400_000);
 
   return (
     <>
       <h1>Application tracker</h1>
+
+      {stale.length > 0 && (
+        <div className="banner">
+          <strong>Needs a nudge:</strong>{" "}
+          {stale
+            .map((a) => `${a.job.title} (${a.status}, idle ${idleDays(a)}d)`)
+            .join(" · ")}{" "}
+          — follow up or move them along.
+        </div>
+      )}
+
       <div className="tabs">
         <button className={tab === "all" ? "active" : ""} onClick={() => setTab("all")}>
           all ({apps.length})

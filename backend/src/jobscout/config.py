@@ -59,6 +59,17 @@ class Settings(BaseSettings):
     embedding_provider: str = "sentence-transformers"
     embedding_model: str = "all-MiniLM-L6-v2"
 
+    # --- copilot LLM (Phase 4) ----------------------------------------------
+    # 'none' (default): tailoring/cover letters produce deterministic,
+    # clearly-labeled scaffolds. 'ollama': local model, private, free.
+    # 'anthropic': paid API — the PLAN.md escape hatch for when cover-
+    # letter quality matters most (needs ANTHROPIC_API_KEY).
+    llm_provider: str = "none"
+    ollama_url: str = "http://localhost:11434"
+    ollama_model: str = "llama3.1:8b"
+    anthropic_model: str = "claude-sonnet-5"
+    anthropic_api_key: str = ""
+
     # --- API (Phase 3) -------------------------------------------------------
     # Origins allowed to call the API from a browser (the Next.js app).
     cors_origins: list[str] = ["http://localhost:3000"]

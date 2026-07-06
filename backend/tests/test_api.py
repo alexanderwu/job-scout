@@ -160,3 +160,32 @@ async def test_application_lifecycle(client: httpx.AsyncClient, db_session: Asyn
 
 async def test_application_for_missing_job_404s(client: httpx.AsyncClient) -> None:
     assert (await client.post("/applications", json={"job_id": 424242})).status_code == 404
+
+
+async def test_copilot_endpoints(client: httpx.AsyncClient, db_session: AsyncSession) -> None:
+    """Skill gap, tailoring, cover letter, reminders — template mode."""
+    await seed_jobs(db_session)
+    profile = (await client.post("/profiles", data={"text": "Python SQL engineer"})).json()
+    job_id = (await client.get("/jobs", params={"q": "data"})).json()[0]["id"]
+
+    gap = (
+        await client.get(f"/profiles/{profile['id']}/skill-gap", params={"role": "data engineer"})
+    ).json()
+    assert gap["sampled_jobs"] == 1
+    assert any(d["skill"] == "Airflow" for d in gap["missing"])
+
+    tailored = (
+        await client.post(f"/jobs/{job_id}/tailor", params={"profile_id": profile["id"]})
+    ).json()
+    assert tailored["emphasized_skills"]
+    assert tailored["prose"] is None  # LLM_PROVIDER=none
+
+    letter = (
+        await client.post(f"/jobs/{job_id}/cover-letter", params={"profile_id": profile["id"]})
+    ).json()
+    assert letter["generated_by"] == "template"
+    assert "[EDIT:" in letter["body"]
+
+    # a fresh application isn't stale; the reminder list starts empty
+    await client.post("/applications", json={"job_id": job_id})
+    assert (await client.get("/applications/reminders")).json() == []

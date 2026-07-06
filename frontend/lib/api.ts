@@ -175,3 +175,52 @@ export function formatSalary(job: JobSummary): string | null {
   const hi = job.salary_max ? fmt(job.salary_max) : "?";
   return `${lo}–${hi} ${job.salary_currency ?? ""}`.trim();
 }
+
+// --- Phase 4: copilot -------------------------------------------------------
+
+export interface SkillDemand {
+  skill: string;
+  count: number;
+  share: number;
+}
+
+export interface SkillGap {
+  role: string;
+  sampled_jobs: number;
+  have: SkillDemand[];
+  missing: SkillDemand[];
+}
+
+export interface TailorAdvice {
+  job_id: number;
+  suggestions: string[];
+  emphasized_skills: string[];
+  gap_skills: string[];
+  prose: string | null;
+}
+
+export interface CoverLetter {
+  job_id: number;
+  body: string;
+  generated_by: string;
+}
+
+export const copilot = {
+  skillGap: (profileId: number | string, role: string) =>
+    request<SkillGap>(
+      `/profiles/${profileId}/skill-gap?role=${encodeURIComponent(role)}`,
+    ),
+
+  tailor: (jobId: number | string, profileId: number | string) =>
+    request<TailorAdvice>(`/jobs/${jobId}/tailor?profile_id=${profileId}`, {
+      method: "POST",
+    }),
+
+  coverLetter: (jobId: number | string, profileId: number | string) =>
+    request<CoverLetter>(`/jobs/${jobId}/cover-letter?profile_id=${profileId}`, {
+      method: "POST",
+    }),
+
+  reminders: (days = 7) =>
+    request<Application[]>(`/applications/reminders?days=${days}`),
+};

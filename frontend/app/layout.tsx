@@ -20,6 +20,7 @@ export default function RootLayout({
           <nav>
             <Link href="/">Profiles</Link>
             <Link href="/jobs">Jobs</Link>
+            <Link href="/skill-gap">Skill gap</Link>
             <Link href="/tracker">Tracker</Link>
           </nav>
         </header>

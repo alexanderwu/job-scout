@@ -17,6 +17,7 @@ from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from jobscout.db import session_scope
+from jobscout.llm import LLMProvider
 from jobscout.matching.embeddings import EmbeddingProvider
 
 
@@ -35,5 +36,13 @@ def get_provider(request: Request) -> EmbeddingProvider:
     return provider
 
 
+def get_llm(request: Request) -> LLMProvider | None:
+    """None when LLM_PROVIDER=none — copilot features fall back to
+    their deterministic/template paths (llm.py)."""
+    llm: LLMProvider | None = request.app.state.llm
+    return llm
+
+
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 ProviderDep = Annotated[EmbeddingProvider, Depends(get_provider)]
+LLMDep = Annotated[LLMProvider | None, Depends(get_llm)]

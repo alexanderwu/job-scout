@@ -5,6 +5,7 @@
  */
 
 import { api, formatSalary } from "@/lib/api";
+import CopilotPanel from "@/components/CopilotPanel";
 import SaveButton from "@/components/SaveButton";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,8 @@ export default async function JobPage({
         {formatSalary(job) ? ` · ${formatSalary(job)}` : ""}
       </p>
       <SaveButton jobId={job.id} />
+
+      <CopilotPanel jobId={job.id} />
 
       <h2>Seen on</h2>
       {job.postings.map((posting) => (
