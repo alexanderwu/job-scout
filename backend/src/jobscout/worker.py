@@ -25,8 +25,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import TYPE_CHECKING
 
 from jobscout.config import get_settings
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 from jobscout.ingest.pipeline import IngestReport, ingest_all
 from jobscout.ingest.registry import configured_sources, default_http_client
 
@@ -76,7 +80,25 @@ async def _run() -> IngestReport:
             )
             return IngestReport()
         async with session_scope() as session:
-            return await ingest_all(session, sources)
+            report = await ingest_all(session, sources)
+            # Chain embedding so fresh jobs are searchable immediately;
+            # a separate schedule would add a lag window for no benefit.
+            # Failures here don't invalidate the ingest (data is safely
+            # committed) — the next run retries whatever's unembedded.
+            try:
+                await _embed_new(session)
+            except Exception:
+                logger.exception("post-ingest embedding failed; ingest data is intact")
+            return report
+
+
+async def _embed_new(session: AsyncSession) -> None:
+    from jobscout.matching.embed_jobs import embed_pending_jobs
+    from jobscout.matching.embeddings import provider_from_settings
+
+    stats = await embed_pending_jobs(session, provider_from_settings(get_settings()))
+    if stats.embedded:
+        logger.info("embedded %d new/changed jobs (%s)", stats.embedded, stats.signature)
 
 
 def register_cron() -> None:

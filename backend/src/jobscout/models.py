@@ -33,6 +33,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
     DateTime,
@@ -43,6 +44,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+from jobscout.matching.embeddings import EMBEDDING_DIM
 
 
 class Base(DeclarativeBase):
@@ -86,6 +89,20 @@ class Job(Base):
 
     first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    # --- Phase 2: semantic search -----------------------------------------
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM), nullable=True)
+    """Unit-length vector for the job's text; NULL until the embed batch
+    job has processed this row. Fixed width: changing to a model with a
+    different dimension is a schema migration on purpose (it forces the
+    re-embed-everything decision to be explicit)."""
+
+    embedding_sig: Mapped[str | None] = mapped_column(Text)
+    """Which provider+model produced the vector (e.g. ``st:all-MiniLM-
+    L6-v2``). Search only compares vectors with the *current* signature —
+    distances across models are meaningless."""
+
+    embedded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     postings: Mapped[list[Posting]] = relationship(back_populates="job")
 

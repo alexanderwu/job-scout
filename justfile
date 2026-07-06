@@ -12,10 +12,13 @@
 default:
     @just --list
 
-# Create/update the virtualenv with the pinned Python and all dependencies.
+# Create/update the virtualenv with the pinned Python and all dependencies,
+# including the ml group (sentence-transformers/torch — the big download).
+# CI and low-RAM machines can `uv sync` without it and set
+# EMBEDDING_PROVIDER=hashing instead.
 [working-directory('backend')]
 install:
-    uv sync
+    uv sync --group ml
 
 # Start local Postgres (pgvector) + Redis in the background.
 up:

@@ -51,6 +51,14 @@ class Settings(BaseSettings):
     # How often the scheduled worker re-runs ingestion (see schedules.py).
     ingest_interval_minutes: int = 30
 
+    # --- matching (Phase 2) ------------------------------------------------
+    # 'sentence-transformers' (default; local neural model, needs the ml
+    # dependency group) or 'hashing' (dependency-free lexical baseline).
+    # See matching/embeddings.py for the trade-off and the one hard rule:
+    # resume and job vectors must come from the same provider+model.
+    embedding_provider: str = "sentence-transformers"
+    embedding_model: str = "all-MiniLM-L6-v2"
+
     @field_validator("greenhouse_boards", "lever_sites", mode="before")
     @classmethod
     def _split_commas(cls, value: object) -> object:

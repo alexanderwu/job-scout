@@ -101,6 +101,98 @@ def recent(
     typer.echo(f"\n{len(rows)} job(s) first seen in the last {hours}h")
 
 
+@app.command()
+def embed() -> None:
+    """Embed all jobs that lack a current-model vector.
+
+    Ingestion normally chains this automatically; run it by hand after
+    switching EMBEDDING_PROVIDER/EMBEDDING_MODEL to re-embed the corpus.
+    """
+
+    async def _embed() -> int:
+        from jobscout.config import get_settings
+        from jobscout.db import session_scope
+        from jobscout.matching.embed_jobs import embed_pending_jobs
+        from jobscout.matching.embeddings import provider_from_settings
+
+        provider = provider_from_settings(get_settings())
+        async with session_scope() as session:
+            stats = await embed_pending_jobs(session, provider)
+        typer.echo(f"embedded {stats.embedded} job(s) with {stats.signature}")
+        return stats.embedded
+
+    asyncio.run(_embed())
+
+
+@app.command()
+def match(
+    resume: str = typer.Argument(..., help="Path to your resume (.pdf, .txt, or .md)."),
+    top: int = typer.Option(20, help="How many matches to show."),
+    location: str | None = typer.Option(
+        None, help="Only jobs whose location contains this substring."
+    ),
+    remote: bool = typer.Option(False, "--remote", help="Only jobs explicitly marked remote."),
+    min_salary: int | None = typer.Option(
+        None, help="Only jobs whose salary range reaches this (annual)."
+    ),
+    max_age_days: int = typer.Option(45, help="Ignore jobs not seen in this many days."),
+) -> None:
+    """Rank stored jobs against your resume — the Phase 2 milestone.
+
+    Every match prints its score and the shared-skill reasoning, so you
+    can see *why* it ranked where it did.
+    """
+    from pathlib import Path
+
+    from jobscout.matching.resume import load_resume_text
+
+    resume_text = load_resume_text(Path(resume))
+
+    async def _match() -> None:
+        from jobscout.config import get_settings
+        from jobscout.db import session_scope
+        from jobscout.matching.embeddings import provider_from_settings
+        from jobscout.matching.engine import MatchFilters, match_resume
+
+        provider = provider_from_settings(get_settings())
+        filters = MatchFilters(
+            location_contains=location,
+            remote_only=remote,
+            min_salary=min_salary,
+            max_age_days=max_age_days,
+        )
+        async with session_scope() as session:
+            result = await match_resume(session, provider, resume_text, filters=filters, limit=top)
+
+        if not result.matches:
+            typer.echo(
+                "no matches. Either nothing is ingested yet (`jobscout ingest`), "
+                "nothing is embedded with the current model (`jobscout embed`), "
+                "or the filters excluded everything."
+            )
+            raise typer.Exit(code=1)
+
+        if result.resume_skills:
+            typer.echo(f"resume skills detected: {', '.join(sorted(result.resume_skills))}\n")
+        for rank, m in enumerate(result.matches, start=1):
+            job = m.job
+            salary = ""
+            if job.salary_min or job.salary_max:
+                lo = f"{job.salary_min:,}" if job.salary_min else "?"
+                hi = f"{job.salary_max:,}" if job.salary_max else "?"
+                salary = f"  {lo}-{hi} {job.salary_currency or ''}".rstrip()
+            typer.echo(
+                f"{rank:>2}. [{m.score:.0%}] {job.title} @ {job.company or '?'}"
+                f"  ({job.location or '?'}){salary}"
+            )
+            typer.echo(f"    {m.explanation.summary()}")
+            url = job.postings[0].url if job.postings else None
+            if url:
+                typer.echo(f"    {url}")
+
+    asyncio.run(_match())
+
+
 def main() -> None:  # console-script entrypoint (pyproject [project.scripts])
     app()
 

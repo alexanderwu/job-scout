@@ -42,7 +42,7 @@ Job Scout is at the foundations stage: the roadmap and tech stack are settled (s
 
 - **Done (Phase 0):** project scaffold (`uv`/`ruff`/`mypy`/`pytest`, CI), local Postgres+pgvector and Redis via Docker Compose, the `JobSource` adapter interface, and a first hiring.cafe adapter (tested against fixtures; live API shape still needs manual confirmation).
 - **Done (Phase 1):** the ingestion pipeline — official Greenhouse and Lever adapters, normalization, tiered cross-source dedupe into `jobs`/`postings` tables (Alembic-migrated Postgres), a `jobscout ingest`/`jobscout recent` CLI, and scheduled background runs via RQ + `rq cron`.
-- **Next up:** the matching engine that ranks jobs against a candidate profile, with a CLI to use it daily (Phase 2 — the real MVP).
+- **Done (Phase 2 — the real MVP):** the matching engine. Jobs are embedded locally (sentence-transformers behind a swappable `EmbeddingProvider`; a dependency-free hashing baseline ships too) into pgvector, and `jobscout match resume.pdf` returns ranked matches with skill-overlap reasoning and location/remote/salary/freshness filters.
 - **Later:** web frontend, career-copilot features (skill-gap analysis, resume tailoring, cover letters), application tracker, and market-insight dashboards.
 
 ## Getting started
