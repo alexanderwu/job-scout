@@ -47,6 +47,16 @@ makemigration message:
 ingest:
     uv run jobscout ingest
 
+# Start the FastAPI backend (http://localhost:8000, OpenAPI docs at /docs).
+[working-directory('backend')]
+api:
+    uv run uvicorn jobscout.api.app:app --reload --port 8000
+
+# Start the Next.js frontend dev server (http://localhost:3000).
+[working-directory('frontend')]
+web:
+    npm run dev
+
 # Start the background job worker (processes queued ingestion runs).
 [working-directory('backend')]
 worker:

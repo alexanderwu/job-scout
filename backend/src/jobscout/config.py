@@ -59,6 +59,17 @@ class Settings(BaseSettings):
     embedding_provider: str = "sentence-transformers"
     embedding_model: str = "all-MiniLM-L6-v2"
 
+    # --- API (Phase 3) -------------------------------------------------------
+    # Origins allowed to call the API from a browser (the Next.js app).
+    cors_origins: list[str] = ["http://localhost:3000"]
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _split_origin_commas(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
     @field_validator("greenhouse_boards", "lever_sites", mode="before")
     @classmethod
     def _split_commas(cls, value: object) -> object:

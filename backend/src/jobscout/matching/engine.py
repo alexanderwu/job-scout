@@ -71,11 +71,40 @@ async def match_resume(
     filters: MatchFilters | None = None,
     limit: int = 20,
 ) -> MatchResult:
-    filters = filters or MatchFilters()
+    """Rank jobs against raw resume text (the CLI path).
 
-    # Embed the query with the SAME provider the corpus used —
-    # embeddings.py explains why this is non-negotiable.
+    Embeds the query with the SAME provider the corpus used —
+    embeddings.py explains why this is non-negotiable — then defers to
+    :func:`rank_jobs`, which the API also uses with stored profile
+    vectors.
+    """
     (query_vec,) = await asyncio.to_thread(provider.embed, [resume_text])
+    return await rank_jobs(
+        session,
+        provider,
+        query_vec,
+        extract_skills(resume_text),
+        filters=filters,
+        limit=limit,
+    )
+
+
+async def rank_jobs(
+    session: AsyncSession,
+    provider: EmbeddingProvider,
+    query_vec: list[float],
+    resume_skills: set[str],
+    *,
+    filters: MatchFilters | None = None,
+    limit: int = 20,
+    first_seen_after: datetime | None = None,
+) -> MatchResult:
+    """The one ranking query everything funnels through.
+
+    ``first_seen_after`` powers the "new jobs for your profile" feed:
+    same ranking, restricted to jobs that appeared since a timestamp.
+    """
+    filters = filters or MatchFilters()
 
     stmt = (
         select(Job, Job.embedding.cosine_distance(query_vec).label("distance"))
@@ -100,11 +129,12 @@ async def match_resume(
         stmt = stmt.where(Job.salary_max >= filters.min_salary)
     if filters.location_contains:
         stmt = stmt.where(Job.location.icontains(filters.location_contains))
+    if first_seen_after is not None:
+        stmt = stmt.where(Job.first_seen >= first_seen_after)
     stmt = stmt.order_by(Job.embedding.cosine_distance(query_vec)).limit(limit)
 
     rows = (await session.execute(stmt)).all()
 
-    resume_skills = extract_skills(resume_text)
     result = MatchResult(resume_skills=resume_skills, embeddable_jobs=len(rows))
     for job, distance in rows:
         result.matches.append(

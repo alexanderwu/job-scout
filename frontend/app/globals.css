@@ -1,0 +1,218 @@
+/* Hand-written CSS with a small token set, no framework.
+   Rationale: this app has ~5 screens; a utility framework (Tailwind)
+   or component library would add build tooling and learning surface
+   for little gain at this size. The tokens below are the entire
+   design system — change them once, the whole app follows. */
+
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --text: #1a1c1e;
+  --text-muted: #5f646b;
+  --border: #e3e2de;
+  --accent: #2456e6;
+  --accent-soft: #e8eefc;
+  --good: #157f3d;
+  --good-soft: #e3f4e9;
+  --warn: #9a6700;
+  --warn-soft: #fff3d6;
+  --radius: 10px;
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  line-height: 1.55;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.5rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.site-header .brand {
+  font-weight: 700;
+  color: var(--text);
+  font-size: 1.05rem;
+}
+.site-header nav {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.container {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin: 0.5rem 0 1rem;
+}
+h2 {
+  font-size: 1.1rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.row.spread {
+  justify-content: space-between;
+}
+
+/* skill chips */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.35rem 0;
+}
+.chip {
+  font-size: 0.78rem;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  white-space: nowrap;
+}
+.chip.match {
+  background: var(--good-soft);
+  color: var(--good);
+}
+.chip.gap {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+/* score bar: makes ranking legible at a glance */
+.score {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 130px;
+}
+.score-bar {
+  width: 80px;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.score-bar > div {
+  height: 100%;
+  background: var(--accent);
+}
+
+/* forms */
+input[type="text"],
+input[type="number"],
+textarea,
+select {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+}
+textarea {
+  width: 100%;
+  min-height: 10rem;
+  resize: vertical;
+}
+button {
+  font: inherit;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+button:hover {
+  filter: brightness(1.08);
+}
+button.secondary {
+  background: var(--surface);
+  color: var(--accent);
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.error {
+  background: #fdecec;
+  color: #9f1d1d;
+  border: 1px solid #f5c6c6;
+  border-radius: var(--radius);
+  padding: 0.6rem 0.9rem;
+  margin: 0.75rem 0;
+}
+
+.banner {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.9rem;
+  margin: 0.75rem 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+  flex-wrap: wrap;
+}
+.tabs button {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+.tabs button.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+pre.description {
+  white-space: pre-wrap;
+  font: inherit;
+  margin: 0;
+}
