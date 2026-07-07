@@ -61,3 +61,31 @@ jobs:
 
       - name: Tests
         run: uv run pytest
+
+  # Frontend gate: types + a production build. No unit tests yet — the
+  # pages are thin views over the API (which the backend job tests);
+  # `next build` catches the classes of error they can actually have
+  # (type mismatches against lib/api.ts, invalid server/client component
+  # boundaries).
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build

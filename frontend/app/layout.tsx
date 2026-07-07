@@ -23,6 +23,7 @@ export default function RootLayout({
             <Link href="/skill-gap">Skill gap</Link>
             <Link href="/insights">Insights</Link>
             <Link href="/tracker">Tracker</Link>
+            <Link href="/ops">Ops</Link>
           </nav>
         </header>
         <main className="container">{children}</main>

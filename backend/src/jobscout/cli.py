@@ -193,6 +193,38 @@ def match(
     asyncio.run(_match())
 
 
+@app.command()
+def seed(
+    weeks: int = typer.Option(8, help="Weeks of history to fabricate."),
+    jobs_per_week: int = typer.Option(12, help="New postings per week."),
+    wipe: bool = typer.Option(False, "--wipe", help="Remove previously seeded data first."),
+) -> None:
+    """Populate the DB with realistic demo history (see seed.py).
+
+    Runs through the real ingestion pipeline with backdated timestamps,
+    then embeds — afterwards, matching, trends, freshness, and the
+    tracker all have something to show. Seeded rows are tagged with
+    seed_* sources; --wipe removes exactly them.
+    """
+
+    async def _seed() -> None:
+        from jobscout.config import get_settings
+        from jobscout.db import session_scope
+        from jobscout.matching.embed_jobs import embed_pending_jobs
+        from jobscout.matching.embeddings import provider_from_settings
+        from jobscout.seed import seed as run_seed
+
+        async with session_scope() as session:
+            stats = await run_seed(session, weeks=weeks, jobs_per_week=jobs_per_week, wipe=wipe)
+            typer.echo(
+                f"seeded {stats.new_jobs} jobs / {stats.cross_posts} cross-posts over {weeks} weeks"
+            )
+            embed_stats = await embed_pending_jobs(session, provider_from_settings(get_settings()))
+            typer.echo(f"embedded {embed_stats.embedded} job(s) ({embed_stats.signature})")
+
+    asyncio.run(_seed())
+
+
 def main() -> None:  # console-script entrypoint (pyproject [project.scripts])
     app()
 

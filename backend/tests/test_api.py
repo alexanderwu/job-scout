@@ -205,3 +205,17 @@ async def test_insights_endpoints(client: httpx.AsyncClient, db_session: AsyncSe
     assert "Python" in names
     trend = skills["skills"][0]
     assert len(trend["weekly"]) == 4
+
+
+async def test_ops_endpoint(client: httpx.AsyncClient, db_session: AsyncSession) -> None:
+    await seed_jobs(db_session)
+
+    report = (await client.get("/ops")).json()
+
+    assert report["corpus"]["jobs"] == 2
+    assert report["corpus"]["embedding_coverage"] == 1.0
+    assert report["corpus"]["new_last_24h"] == 2
+    assert report["match_latency_ms"] > 0
+    assert report["pg_cache_hit_ratio"] is None or 0 <= report["pg_cache_hit_ratio"] <= 1
+    # queue section exists whether or not redis is up; it must not 500
+    assert "reachable" in report["queue"]

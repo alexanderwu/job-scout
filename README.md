@@ -38,7 +38,7 @@ A few principles guide every technical decision (the full reasoning is in `PLAN.
 
 ## Current status
 
-Job Scout is at the foundations stage: the roadmap and tech stack are settled (see `PLAN.md`), and implementation is starting with the ingestion pipeline. The features described above are the target design — this README describes where the project is headed, and the status here will track what's actually built.
+All planned phases (0–6) are implemented. `PLAN.md` holds the original roadmap and tech-stack trade-offs; **`docs/walkthrough.md` is the guided tour of how it's actually built** — read it next to the code. The commit history mirrors the phases, one commit each, with detailed reasoning in the messages.
 
 - **Done (Phase 0):** project scaffold (`uv`/`ruff`/`mypy`/`pytest`, CI), local Postgres+pgvector and Redis via Docker Compose, the `JobSource` adapter interface, and a first hiring.cafe adapter (tested against fixtures; live API shape still needs manual confirmation).
 - **Done (Phase 1):** the ingestion pipeline — official Greenhouse and Lever adapters, normalization, tiered cross-source dedupe into `jobs`/`postings` tables (Alembic-migrated Postgres), a `jobscout ingest`/`jobscout recent` CLI, and scheduled background runs via RQ + `rq cron`.
@@ -46,15 +46,18 @@ Job Scout is at the foundations stage: the roadmap and tech stack are settled (s
 - **Done (Phase 3):** the web app. FastAPI backend (profiles, matches, feed, job browsing, application tracking — OpenAPI docs at `/docs`) and a Next.js frontend: upload a resume, browse ranked matches with skill chips, view job details across sources, save jobs into a pipeline tracker, with a polling "new jobs for your profile" banner.
 - **Done (Phase 4):** career-copilot features. Skill-gap analysis against your own ingested corpus ("what do Data Engineer postings demand that my resume lacks?"), per-job resume-tailoring suggestions, cover-letter drafting (honest templates by default; optional local Ollama or Anthropic API for prose via the `LLMProvider` interface), and follow-up reminders in the application tracker.
 - **Done (Phase 5):** market insights. Salary percentiles (overall and by location, computed in Postgres with `percentile_cont`) and week-by-week skill-demand trends from your own ingested corpus, with sample sizes shown so the numbers stay honest. `/insights` in the web app.
-- **Next up:** demo polish — realistic seeded history and a lightweight ops view (Phase 6).
+- **Done (Phase 6):** demo polish. `jobscout seed` fabricates weeks of realistic history through the real pipeline (so trends/freshness/staleness features have something to show), and `/ops` surfaces ingestion throughput, embedding coverage, match-query latency, and Postgres/Redis cache hit rates.
+
+Two things still need a human with live network access: confirming hiring.cafe's internal API shape (see the warning in `sources/hiring_cafe.py`; the adapter is fixture-verified and disabled by default) and a first live pull from your chosen Greenhouse/Lever boards.
 
 ## Getting started
 
 ### Repository layout
 
 ```
-backend/     Python app — ingestion, matching, and (Phase 3) the API. All uv/pytest/mypy commands run here.
-frontend/    Next.js web app (Phase 3 — placeholder for now).
+backend/     Python app — ingestion, matching, copilot, insights, and the FastAPI API.
+frontend/    Next.js web app (profiles, matches, jobs, skill gap, insights, tracker, ops).
+docs/        walkthrough.md — the guided tour of the implementation.
 docker-compose.yml   Local Postgres (pgvector) + Redis, shared infra for both.
 justfile     Task runner shortcuts (see below).
 ```
@@ -84,14 +87,20 @@ With `just` (run `just` alone to list them all):
 
 | Command | What it does |
 |---|---|
-| `just install` | Sync the virtualenv with `pyproject.toml` / `uv.lock` |
+| `just install` | Sync the virtualenv (including the `ml` group: sentence-transformers) |
 | `just up` / `just down` | Start / stop local Postgres + Redis |
 | `just reset` | Stop services **and** wipe their data volumes |
+| `just migrate` | Apply pending database migrations |
+| `just ingest` | Pull from all configured sources once (see `backend/.env.example`) |
+| `just api` | Run the FastAPI backend (docs at `localhost:8000/docs`) |
+| `just web` | Run the Next.js frontend (`localhost:3000`; `npm install` in `frontend/` first) |
+| `just worker` / `just cron` | Background ingestion: RQ worker + the periodic scheduler |
 | `just test` | Run the test suite (`just test -k throttle` passes args through) |
-| `just fmt` | Format code |
-| `just lint` | Lint, auto-fixing what's safe |
+| `just fmt` / `just lint` | Format / lint (auto-fixing what's safe) |
 | `just typecheck` | Run mypy (strict) |
 | `just check` | The full CI gate: format check + lint + typecheck + tests |
+
+First look around? `just migrate && cd backend && uv run jobscout seed` fills the database with 8 weeks of realistic demo history (tagged, removable with `--wipe`), then `jobscout match your-resume.pdf` or the web app has something to show.
 
 Without `just`, the equivalents are `docker compose up -d` (from the root) and, from `backend/`, `uv sync`, `uv run pytest`, `uv run ruff format .`, `uv run ruff check .`, and `uv run mypy`.
 

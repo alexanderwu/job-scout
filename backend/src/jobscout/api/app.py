@@ -17,7 +17,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from jobscout.api.routes import applications, copilot, insights, jobs, profiles
+from jobscout.api.routes import applications, copilot, insights, jobs, ops, profiles
 from jobscout.config import Settings, get_settings
 from jobscout.llm import LLMProvider, llm_from_settings
 from jobscout.matching.embeddings import EmbeddingProvider, provider_from_settings
@@ -52,6 +52,7 @@ def create_app(
     app.include_router(applications.router)
     app.include_router(copilot.router)
     app.include_router(insights.router)
+    app.include_router(ops.router)
 
     @app.get("/health", tags=["meta"])
     def health() -> dict[str, str]:
